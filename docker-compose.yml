@@ -9,11 +9,31 @@ services:
       - '5432:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   redis:
     image: redis:7-alpine
     ports:
       - '6379:6379'
+
+  indexer:
+    build: .
+    command: ['node', 'apps/indexer/dist/index.js']
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/token_intelligence
+      BASE_RPC_URL: https://mainnet.base.org
+      START_BLOCK: '0'
+      BACKFILL_BLOCKS: '0'
+      POLL_INTERVAL_MS: '12000'
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
 
 volumes:
   postgres_data:
