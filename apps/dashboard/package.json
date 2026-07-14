@@ -1,0 +1,9 @@
+{
+  "name": "@token-intelligence-ai/dashboard",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "echo 'Dashboard app placeholder'",
+    "build": "echo 'Dashboard build placeholder'"
+  }
+}

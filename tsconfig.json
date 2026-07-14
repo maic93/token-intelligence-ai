@@ -1,0 +1,14 @@
+{
+  "files": [],
+  "references": [
+    { "path": "./apps/api" },
+    { "path": "./apps/dashboard" },
+    { "path": "./apps/indexer" },
+    { "path": "./packages/ai" },
+    { "path": "./packages/analytics" },
+    { "path": "./packages/blockchain" },
+    { "path": "./packages/database" },
+    { "path": "./packages/shared" },
+    { "path": "./packages/ui" }
+  ]
+}
