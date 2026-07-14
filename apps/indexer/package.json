@@ -10,7 +10,8 @@
   },
   "dependencies": {
     "@token-intelligence-ai/database": "workspace:*",
-    "@token-intelligence-ai/blockchain": "workspace:*"
+    "@token-intelligence-ai/blockchain": "workspace:*",
+    "@token-intelligence-ai/shared": "workspace:*"
   },
   "devDependencies": {
     "ts-node": "^10.9.2"

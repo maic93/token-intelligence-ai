@@ -8,5 +8,9 @@
     "moduleResolution": "NodeNext"
   },
   "include": ["src/**/*.ts"],
-  "references": [{ "path": "../../packages/database" }, { "path": "../../packages/blockchain" }]
+  "references": [
+    { "path": "../../packages/database" },
+    { "path": "../../packages/blockchain" },
+    { "path": "../../packages/shared" }
+  ]
 }

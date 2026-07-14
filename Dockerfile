@@ -1,20 +1,16 @@
 FROM node:22-alpine AS base
-ENV PNPM_HOME="/pnpm"
-ENV PATH="$PNPM_HOME:$PATH"
-RUN corepack enable
+RUN corepack enable && corepack prepare pnpm@9.15.0 --activate
 WORKDIR /app
 
-FROM base AS deps
-COPY package.json pnpm-workspace.yaml ./
-COPY apps ./apps
-COPY packages ./packages
-RUN pnpm install --frozen-lockfile
-
 FROM base AS build
-COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+RUN pnpm install --frozen-lockfile
 RUN pnpm build
 
 FROM base AS runner
-COPY --from=build /app /app
-CMD ["pnpm", "dev"]
+WORKDIR /app
+COPY --from=build /app .
+COPY apps/indexer/bin/start.sh ./bin/start.sh
+RUN chmod +x /app/bin/start.sh
+ENV NODE_ENV=production
+CMD ["/app/bin/start.sh"]

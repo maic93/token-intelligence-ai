@@ -58,6 +58,9 @@ importers:
       '@token-intelligence-ai/database':
         specifier: workspace:*
         version: link:../../packages/database
+      '@token-intelligence-ai/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
     devDependencies:
       ts-node:
         specifier: ^10.9.2
