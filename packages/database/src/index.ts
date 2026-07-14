@@ -1,7 +1,3 @@
-export interface DatabaseConfig {
-  url: string;
-}
-
-export function createDatabaseConfig(url: string): DatabaseConfig {
-  return { url };
-}
+export { prisma } from './client.js';
+export { TokenRepository } from './token-repository.js';
+export type { CreateTokenInput, ListTokensOptions } from './token-repository.js';

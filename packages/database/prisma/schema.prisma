@@ -1,0 +1,38 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Token {
+  id              String   @id @default(uuid())
+  chain           String
+  contractAddress String
+  deployer        String
+  name            String
+  symbol          String
+  decimals        Int
+  totalSupply     String
+  discoveredAt    DateTime @default(now())
+  blockNumber     BigInt
+  blockTimestamp  DateTime
+  transactionHash String
+
+  @@unique([chain, contractAddress])
+  @@index([chain])
+  @@index([discoveredAt])
+  @@map("tokens")
+}
+
+model SyncCursor {
+  id        String   @id
+  chain     String
+  blockNumber BigInt
+  updatedAt DateTime @updatedAt
+
+  @@unique([id, chain])
+  @@map("sync_cursors")
+}

@@ -4,7 +4,15 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "echo 'Indexer placeholder'",
-    "build": "echo 'Indexer build placeholder'"
+    "dev": "node --loader ts-node/esm src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@token-intelligence-ai/database": "workspace:*",
+    "@token-intelligence-ai/blockchain": "workspace:*"
+  },
+  "devDependencies": {
+    "ts-node": "^10.9.2"
   }
 }
