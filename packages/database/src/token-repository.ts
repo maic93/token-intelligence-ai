@@ -105,4 +105,36 @@ export class TokenRepository {
     });
     return cursor?.blockNumber ?? null;
   }
+
+  async getTokenCount(): Promise<number> {
+    return this.prisma.token.count();
+  }
+
+  async getRecentTokenCount(hours: number): Promise<number> {
+    const since = new Date(Date.now() - hours * 60 * 60 * 1000);
+    return this.prisma.token.count({
+      where: { discoveredAt: { gte: since } },
+    });
+  }
+
+  async getChainCounts(): Promise<{ chain: string; count: number }[]> {
+    const result = await this.prisma.token.groupBy({
+      by: ['chain'],
+      _count: { chain: true },
+    });
+    return result.map((r) => ({ chain: r.chain, count: r._count.chain }));
+  }
+
+  async getUniqueDeployersCount(): Promise<number> {
+    const result = await this.prisma.token.findMany({
+      select: { deployer: true },
+      distinct: ['deployer'],
+    });
+    return result.length;
+  }
+
+  async getLatestCursors(): Promise<{ chain: string; blockNumber: bigint }[]> {
+    const cursors = await this.prisma.syncCursor.findMany();
+    return cursors.map((c) => ({ chain: c.chain, blockNumber: c.blockNumber }));
+  }
 }
