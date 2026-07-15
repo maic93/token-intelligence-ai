@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { ChainInfo } from '../types';
 import { fetchChains } from '../api';
-import { explorerUrl } from '../utils';
 
 export function ChainPanel() {
   const [chains, setChains] = useState<ChainInfo[]>([]);
@@ -34,18 +33,22 @@ export function ChainPanel() {
           {chains.map((c) => (
             <div key={c.name} className="chain-item">
               <div className="chain-item-header">
-                <span className={`chain-badge`} data-chain={c.name}>
+                <span className="chain-badge" data-chain={c.name}>
                   {c.displayName}
                 </span>
-                <span className={`status-dot ${c.enabled ? 'connected' : 'disconnected'}`} />
+                <div className="chain-item-status">
+                  <span className={`status-dot ${c.rpcAvailable ? 'connected' : 'disconnected'}`} />
+                  <span className="chain-id">ID: {c.chainId}</span>
+                </div>
               </div>
               <div className="chain-item-details">
                 <span>Tokens: {c.tokenCount}</span>
                 <span>Block: {c.lastSyncedBlock ?? '-'}</span>
+                <span>Currency: {c.nativeCurrency.symbol}</span>
               </div>
               <a
                 className="btn btn-explorer btn-sm"
-                href={explorerUrl(c.name, '')}
+                href={`${c.explorerUrl}/address/`}
                 target="_blank"
                 rel="noopener noreferrer"
               >

@@ -1,6 +1,7 @@
 export interface TokenData {
   contractAddress: string;
   chain: string;
+  chainId: number;
   tokenName: string;
   tokenSymbol: string;
   decimals: number;
@@ -34,10 +35,14 @@ export interface StatsResponse {
 
 export interface ChainInfo {
   name: string;
+  chainId: number;
   displayName: string;
+  explorerUrl: string;
+  nativeCurrency: { name: string; symbol: string; decimals: number };
   enabled: boolean;
   tokenCount: number;
   lastSyncedBlock: string | null;
+  rpcAvailable: boolean;
 }
 
 export interface ChainsResponse {
