@@ -2,14 +2,16 @@ import { TokenRepository } from '@token-intelligence-ai/database';
 import type { Logger } from '@token-intelligence-ai/shared';
 import type { RpcClient, RpcTransaction } from './rpc.js';
 import { detectErc20 } from './erc20.js';
-
-const CHAIN = 'base' as const;
+import type { Publisher } from './publisher.js';
+import type { ChainName } from '@token-intelligence-ai/blockchain';
 
 export class BlockProcessor {
   constructor(
+    private readonly chain: ChainName,
     private readonly rpc: RpcClient,
     private readonly tokenRepo: TokenRepository,
     private readonly log: Logger,
+    private readonly publisher?: Publisher,
   ) {}
 
   async processBlock(blockNumber: bigint): Promise<void> {
@@ -23,6 +25,7 @@ export class BlockProcessor {
         await this.processContractCreation(tx, blockNumber, blockTimestamp);
       } catch (error) {
         this.log.error('Failed to process transaction', {
+          chain: this.chain,
           txHash: tx.hash,
           blockNumber: blockNumber.toString(),
           error: String(error),
@@ -30,7 +33,7 @@ export class BlockProcessor {
       }
     }
 
-    await this.tokenRepo.saveLastProcessedBlock(CHAIN, blockNumber);
+    await this.tokenRepo.saveLastProcessedBlock(this.chain, blockNumber);
   }
 
   private async processContractCreation(
@@ -45,20 +48,20 @@ export class BlockProcessor {
 
     const contractAddress = receipt.contractAddress.toLowerCase();
 
-    const exists = await this.tokenRepo.tokenExists(CHAIN, contractAddress);
+    const exists = await this.tokenRepo.tokenExists(this.chain, contractAddress);
     if (exists) {
-      this.log.info('Duplicate skipped', { contractAddress, chain: CHAIN });
+      this.log.info('Duplicate skipped', { contractAddress, chain: this.chain });
       return;
     }
 
     const metadata = await detectErc20(this.rpc, contractAddress);
     if (!metadata) {
-      this.log.info('Metadata failure', { contractAddress });
+      this.log.info('Metadata failure', { chain: this.chain, contractAddress });
       return;
     }
 
-    await this.tokenRepo.createToken({
-      chain: CHAIN,
+    const token = await this.tokenRepo.createToken({
+      chain: this.chain,
       contractAddress,
       deployer: tx.from.toLowerCase(),
       name: metadata.name,
@@ -71,6 +74,7 @@ export class BlockProcessor {
     });
 
     this.log.info('New token discovered', {
+      chain: this.chain,
       contractAddress,
       symbol: metadata.symbol,
       name: metadata.name,
@@ -78,5 +82,20 @@ export class BlockProcessor {
       deployer: tx.from,
       blockNumber: blockNumber.toString(),
     });
+
+    if (this.publisher) {
+      this.publisher.publish(this.publisher.tokenDiscoveryChannel, {
+        contractAddress,
+        chain: this.chain,
+        tokenName: token.name,
+        tokenSymbol: token.symbol,
+        decimals: token.decimals,
+        totalSupply: token.totalSupply?.toString(),
+        deployer: token.deployer,
+        blockNumber: blockNumber.toString(),
+        blockTimestamp: blockTimestamp.toISOString(),
+        transactionHash: tx.hash,
+      });
+    }
   }
 }

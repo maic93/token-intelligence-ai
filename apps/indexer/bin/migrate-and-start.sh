@@ -7,5 +7,6 @@ echo 'Running database migrations...'
 cd /app/packages/database
 prisma migrate deploy
 
-echo 'Starting indexer...'
-exec node /app/apps/indexer/dist/index.js
+echo 'Starting service...'
+cd /app
+exec "$@"
