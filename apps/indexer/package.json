@@ -9,6 +9,7 @@
     "start": "node dist/index.js"
   },
   "dependencies": {
+    "ioredis": "^5.4.1",
     "@token-intelligence-ai/database": "workspace:*",
     "@token-intelligence-ai/blockchain": "workspace:*",
     "@token-intelligence-ai/shared": "workspace:*"

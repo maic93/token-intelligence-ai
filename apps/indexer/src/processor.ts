@@ -23,6 +23,7 @@ export class BlockProcessor {
         await this.processContractCreation(tx, blockNumber, blockTimestamp);
       } catch (error) {
         this.log.error('Failed to process transaction', {
+          chain: this.chain,
           txHash: tx.hash,
           blockNumber: blockNumber.toString(),
           error: String(error),
@@ -59,6 +60,7 @@ export class BlockProcessor {
 
     await this.tokenRepo.createToken({
       chain: CHAIN,
+
       contractAddress,
       deployer: tx.from.toLowerCase(),
       name: metadata.name,

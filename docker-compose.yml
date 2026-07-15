@@ -26,14 +26,31 @@ services:
     environment:
       NODE_ENV: production
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/token_intelligence
+      REDIS_URL: redis://redis:6379
       BASE_RPC_URL: https://mainnet.base.org
       START_BLOCK: '0'
       BACKFILL_BLOCKS: '0'
+      BACKFILL_BATCH_SIZE: '5'
+      BACKFILL_DELAY_MS: '1000'
       POLL_INTERVAL_MS: '12000'
     depends_on:
       postgres:
         condition: service_healthy
     restart: unless-stopped
 
+  api:
+    build: .
+    command: ['node', 'apps/api/dist/index.js']
+    ports:
+      - '4000:4000'
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/token_intelligence
+      REDIS_URL: redis://redis:6379
+      PORT: '4000'
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
 volumes:
   postgres_data:

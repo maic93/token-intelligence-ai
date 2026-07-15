@@ -1,6 +1,7 @@
 export interface IndexerConfig {
   baseRpcUrl: string;
   databaseUrl: string;
+  redisUrl: string;
   startBlock: number;
   backfillBlocks: number;
   pollIntervalMs: number;
@@ -9,6 +10,7 @@ export interface IndexerConfig {
 export function loadConfig(): IndexerConfig {
   const baseRpcUrl = requireEnv('BASE_RPC_URL');
   const databaseUrl = requireEnv('DATABASE_URL');
+  const redisUrl = process.env['REDIS_URL'] ?? 'redis://localhost:6379';
   const startBlock = parseOptionalInt('START_BLOCK', 0);
   const backfillBlocks = parseOptionalInt('BACKFILL_BLOCKS', 0);
   const pollIntervalMs = parseOptionalInt('POLL_INTERVAL_MS', 12_000);
@@ -17,7 +19,7 @@ export function loadConfig(): IndexerConfig {
     throw new Error('POLL_INTERVAL_MS must be at least 1000');
   }
 
-  return { baseRpcUrl, databaseUrl, startBlock, backfillBlocks, pollIntervalMs };
+  return { baseRpcUrl, databaseUrl, redisUrl, startBlock, backfillBlocks, pollIntervalMs };
 }
 
 function requireEnv(name: string): string {
