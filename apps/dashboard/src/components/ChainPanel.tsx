@@ -1,6 +1,12 @@
 import { useEffect, useState } from 'react';
+import { motion } from 'framer-motion';
+import { ExternalLink } from 'lucide-react';
 import type { ChainInfo } from '../types';
 import { fetchChains } from '../api';
+
+function chainBadgeClass(chain: string): string {
+  return `chain-badge-${chain}`;
+}
 
 export function ChainPanel() {
   const [chains, setChains] = useState<ChainInfo[]>([]);
@@ -23,19 +29,25 @@ export function ChainPanel() {
 
   return (
     <section className="chain-panel">
-      <h2 className="section-title">Indexed Chains</h2>
+      <h2 className="watchlist-title">Indexed Chains</h2>
       {loading ? (
         <div className="skeleton skeleton-line" />
       ) : chains.length === 0 ? (
-        <div className="empty-state-sm">No chains configured</div>
+        <div className="empty-state" style={{ padding: 24 }}>
+          No chains configured
+        </div>
       ) : (
         <div className="chain-list">
-          {chains.map((c) => (
-            <div key={c.name} className="chain-item">
+          {chains.map((c, i) => (
+            <motion.div
+              key={c.name}
+              className="chain-item"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.05 }}
+            >
               <div className="chain-item-header">
-                <span className="chain-badge" data-chain={c.name}>
-                  {c.displayName}
-                </span>
+                <span className={`chain-badge ${chainBadgeClass(c.name)}`}>{c.displayName}</span>
                 <div className="chain-item-status">
                   <span className={`status-dot ${c.rpcAvailable ? 'connected' : 'disconnected'}`} />
                   <span className="chain-id">ID: {c.chainId}</span>
@@ -47,14 +59,14 @@ export function ChainPanel() {
                 <span>Currency: {c.nativeCurrency.symbol}</span>
               </div>
               <a
-                className="btn btn-explorer btn-sm"
+                className="btn btn-sm"
                 href={`${c.explorerUrl}/address/`}
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                Explorer
+                <ExternalLink size={11} /> Explorer
               </a>
-            </div>
+            </motion.div>
           ))}
         </div>
       )}

@@ -25,7 +25,7 @@ Token Intelligence AI is an open-source platform that continuously indexes suppo
 - **Redis Caching** — Token lists cached 15s, individual tokens 5min, stats 30s
 - **REST API** — Paginated token lists, per-token lookup, platform stats, chain status
 - **WebSocket Updates** — Live token discovery pushed to connected clients
-- **Real-time Dashboard** — React 19 + Vite 6 dark-theme UI
+- **Premium Dashboard** — React 19 + Vite 6 dark-theme UI with glassmorphism, framer-motion animations, Lucide icons, collapsible sidebar, hero metrics, and responsive design
 - **Token Risk Analysis** — Deterministic scoring engine for every discovered token (0–100 score, 5 risk levels, explainable factors)
 - **Docker Deployment** — Multi-stage builds, healthchecks, Compose orchestration
 - **Structured JSON Logging** — Pretty-print in dev, JSON in production, log levels
@@ -38,6 +38,35 @@ Token Intelligence AI is an open-source platform that continuously indexes suppo
 - **Watchlists & Alerts** — Anonymous browser-based watchlists via localStorage, real-time WebSocket alerts for watched tokens, floating notifications with auto-dismiss queue, bell icon with unread counter and dropdown
 
 ---
+
+## Dashboard
+
+### Screenshots
+
+|                                                                |                                                    |
+| :------------------------------------------------------------: | :------------------------------------------------: |
+| ![Dashboard Overview](docs/screenshots/dashboard-overview.png) |   ![Token Grid](docs/screenshots/token-grid.png)   |
+|          ![Analytics](docs/screenshots/analytics.png)          | ![Risk Details](docs/screenshots/risk-details.png) |
+
+_Screenshots will be added to `docs/screenshots/` in a future update._
+
+### UI Features
+
+- **Premium Dark Theme** — Deep navy/slate palette with subtle gradients, glassmorphism nav bar, and soft shadows
+- **Responsive Layout** — Collapsible sidebar, sticky top nav, mobile-friendly with hamburger menu
+- **Hero Section** — Animated counter metrics with gradient background and staggered entrance animations
+- **Stat Cards** — Icon + value + trend indicator with hover elevation and loading skeletons
+- **Charts** — Lazy-loaded Recharts (BarChart per chain, DonutChart risk distribution) with custom legends and dark tooltips
+- **Token Grid** — Animated card grid with token logo placeholder, color-coded risk score, pill filters, and copy/explorer/analytics/risk buttons
+- **Risk Badges** — Pill-shaped badges for SAFE (green), LOW (lime), MEDIUM (yellow), HIGH (orange), CRITICAL (red)
+- **Search** — Rounded search bar with animated clear button
+- **Sidebar** — Animated collapsible sidebar with icons, active indicators, and section labels
+- **Watchlists** — Star toggle on cards, panel with live score updates, WebSocket alerts with auto-dismiss toast queue
+- **Risk Details Modal** — Animated modal with color-coded score, security check pass/fail list, and detailed metrics
+- **Empty/Error States** — Professional empty state illustrations and retry-enabled error cards
+- **Animations** — Framer Motion for card entrance, page transitions, hover effects, button taps, and modal appearances
+- **Loading** — Shimmer skeletons matching card/stat layouts
+- **Responsive** — Fully responsive from mobile (320px) to ultrawide, tablet-friendly sidebar
 
 ## Architecture
 
@@ -74,19 +103,19 @@ Token Intelligence AI is an open-source platform that continuously indexes suppo
 
 ## Tech Stack
 
-| Component     | Technology                             |
-| ------------- | -------------------------------------- |
-| Runtime       | Node.js 22                             |
-| Language      | TypeScript 5.7 (strict mode)           |
-| Package Mgr   | pnpm 9.15 (workspace monorepo)         |
-| ORM           | Prisma 6                               |
-| Database      | PostgreSQL 16                          |
-| Cache         | Redis 7                                |
-| API Framework | Express 4                              |
-| Frontend      | React 19 + Vite 6                      |
-| Container     | Docker + Compose (multi-stage, Alpine) |
-| Linting       | ESLint 8 + Prettier 3                  |
-| Git Hooks     | Husky + lint-staged                    |
+| Component     | Technology                                                  |
+| ------------- | ----------------------------------------------------------- |
+| Runtime       | Node.js 22                                                  |
+| Language      | TypeScript 5.7 (strict mode)                                |
+| Package Mgr   | pnpm 9.15 (workspace monorepo)                              |
+| ORM           | Prisma 6                                                    |
+| Database      | PostgreSQL 16                                               |
+| Cache         | Redis 7                                                     |
+| API Framework | Express 4                                                   |
+| Frontend      | React 19 + Vite 6 + Framer Motion + Lucide React + Recharts |
+| Container     | Docker + Compose (multi-stage, Alpine)                      |
+| Linting       | ESLint 8 + Prettier 3                                       |
+| Git Hooks     | Husky + lint-staged                                         |
 
 ---
 

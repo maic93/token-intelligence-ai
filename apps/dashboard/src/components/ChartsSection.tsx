@@ -37,39 +37,48 @@ export function ChartsSection() {
     CartesianGrid: typeof import('recharts').CartesianGrid;
     Tooltip: typeof import('recharts').Tooltip;
     ResponsiveContainer: typeof import('recharts').ResponsiveContainer;
+    Legend: typeof import('recharts').Legend;
   } | null>(null);
 
   useEffect(() => {
-    import('recharts').then((mod) => setChartComponents(mod));
+    import('recharts').then((mod) => setChartComponents(mod as typeof ChartComponents));
   }, []);
 
   const chainData = useMemo(() => {
     if (!data) return [];
-    return data.tokensPerChain.map((c) => ({ name: c.chain, count: c.count }));
+    const colors: Record<string, string> = {
+      base: '#0052ff',
+      ethereum: '#627eea',
+      polygon: '#8247e5',
+      robinhood: '#00c853',
+    };
+    return data.tokensPerChain.map((c) => ({
+      name: c.chain,
+      count: c.count,
+      fill: colors[c.chain] ?? '#6366f1',
+    }));
   }, [data]);
 
   const riskData = useMemo(() => {
     if (!data) return [];
     const labels: Record<string, string> = {
-      very_safe: 'Very Safe',
-      low: 'Low',
-      medium: 'Medium',
-      high: 'High',
-      critical: 'Critical',
+      SAFE: 'Safe',
+      LOW: 'Low',
+      MEDIUM: 'Medium',
+      HIGH: 'High',
+      CRITICAL: 'Critical',
+    };
+    const colors: Record<string, string> = {
+      SAFE: '#22c55e',
+      LOW: '#84cc16',
+      MEDIUM: '#eab308',
+      HIGH: '#f97316',
+      CRITICAL: '#ef4444',
     };
     return Object.entries(data.riskDistribution).map(([k, v]) => ({
       name: labels[k] ?? k,
       value: v,
-      color:
-        k === 'very_safe'
-          ? '#22c55e'
-          : k === 'low'
-            ? '#4ade80'
-            : k === 'medium'
-              ? '#f59e0b'
-              : k === 'high'
-                ? '#f87171'
-                : '#ef4444',
+      color: colors[k] ?? '#6366f1',
     }));
   }, [data]);
 
@@ -89,53 +98,83 @@ export function ChartsSection() {
     ResponsiveContainer,
   } = ChartComponents;
 
+  const sharedTooltip = {
+    contentStyle: {
+      background: '#181830',
+      border: '1px solid #1f1f3a',
+      borderRadius: 12,
+      fontSize: 12,
+    },
+    labelStyle: { color: '#ededf5' },
+    itemStyle: { color: '#8888a0' },
+  };
+
   return (
-    <section className="charts-section">
-      <h3 className="section-title">Charts</h3>
+    <section style={{ marginBottom: 24 }}>
+      <div className="section-header">
+        <h2 className="section-title">Analytics</h2>
+      </div>
       <div className="charts-grid">
         <div className="chart-card">
-          <h4 className="chart-title">Tokens per Chain</h4>
-          <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={chainData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#2a2e3d" />
-              <XAxis dataKey="name" stroke="#8b8fa3" fontSize={12} />
-              <YAxis stroke="#8b8fa3" fontSize={12} />
-              <Tooltip
-                contentStyle={{
-                  background: '#1a1d28',
-                  border: '1px solid #2a2e3d',
-                  borderRadius: 8,
-                }}
-                labelStyle={{ color: '#e4e6f0' }}
+          <div className="chart-header">
+            <h3 className="chart-title">Tokens per Chain</h3>
+            <div className="chart-legend">
+              {chainData.map((c) => (
+                <div key={c.name} className="legend-item">
+                  <span className="legend-dot" style={{ background: c.fill }} />
+                  {c.name}
+                </div>
+              ))}
+            </div>
+          </div>
+          <ResponsiveContainer width="100%" height={240}>
+            <BarChart data={chainData} margin={{ top: 4, right: 4, bottom: 0, left: -16 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#1f1f3a" vertical={false} />
+              <XAxis
+                dataKey="name"
+                stroke="#5c5c78"
+                fontSize={12}
+                axisLine={false}
+                tickLine={false}
               />
-              <Bar dataKey="count" fill="#6366f1" radius={[4, 4, 0, 0]} />
+              <YAxis stroke="#5c5c78" fontSize={12} axisLine={false} tickLine={false} />
+              <Tooltip {...sharedTooltip} />
+              <Bar dataKey="count" radius={[6, 6, 0, 0]} maxBarSize={48}>
+                {chainData.map((entry, i) => (
+                  <Cell key={i} fill={entry.fill} />
+                ))}
+              </Bar>
             </BarChart>
           </ResponsiveContainer>
         </div>
         <div className="chart-card">
-          <h4 className="chart-title">Risk Distribution</h4>
-          <ResponsiveContainer width="100%" height={220}>
+          <div className="chart-header">
+            <h3 className="chart-title">Risk Distribution</h3>
+            <div className="chart-legend">
+              {riskData.map((r) => (
+                <div key={r.name} className="legend-item">
+                  <span className="legend-dot" style={{ background: r.color }} />
+                  {r.name}
+                </div>
+              ))}
+            </div>
+          </div>
+          <ResponsiveContainer width="100%" height={240}>
             <PieChart>
               <Pie
                 data={riskData}
                 cx="50%"
                 cy="50%"
-                outerRadius={80}
+                innerRadius={60}
+                outerRadius={90}
                 dataKey="value"
-                label={({ name, value }) => `${name}: ${value}`}
-                labelLine={false}
+                paddingAngle={2}
               >
                 {riskData.map((entry, i) => (
                   <Cell key={i} fill={entry.color} />
                 ))}
               </Pie>
-              <Tooltip
-                contentStyle={{
-                  background: '#1a1d28',
-                  border: '1px solid #2a2e3d',
-                  borderRadius: 8,
-                }}
-              />
+              <Tooltip {...sharedTooltip} />
             </PieChart>
           </ResponsiveContainer>
         </div>

@@ -1,8 +1,11 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
+import { AnimatePresence } from 'framer-motion';
 import type { TokenData, AlertMessage } from './types';
 import { useWebSocket } from './hooks/useWebSocket';
 import { useWatchlist } from './hooks/useWatchlist';
-import { Header } from './components/Header';
+import { Sidebar } from './components/Sidebar';
+import { TopNav } from './components/TopNav';
+import { HeroSection } from './components/HeroSection';
 import { StatsSection } from './components/StatsSection';
 import { AnalyticsCards } from './components/AnalyticsCards';
 import { ChartsSection } from './components/ChartsSection';
@@ -29,6 +32,9 @@ export default function App() {
   const [route, setRoute] = useState(parseHash);
   const [newKeys, setNewKeys] = useState<Set<string>>(new Set());
   const [liveTokens, setLiveTokens] = useState<TokenData[]>([]);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [activeView, setActiveView] = useState('dashboard');
+  const [searchQuery, setSearchQuery] = useState('');
   const newTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
   const {
@@ -51,6 +57,15 @@ export default function App() {
 
   const navigateToAnalytics = useCallback((chain: string, address: string) => {
     window.location.hash = `/analytics/${chain}/${address}`;
+  }, []);
+
+  const navigateToView = useCallback((view: string) => {
+    setActiveView(view);
+    if (view === 'analytics') {
+      window.location.hash = '#/analytics';
+    } else {
+      window.location.hash = '';
+    }
   }, []);
 
   const handleTokenDiscovery = useCallback(
@@ -120,71 +135,164 @@ export default function App() {
 
   if (route.view === 'analytics') {
     return (
-      <div className="app">
-        <Header connected={isConnected()} />
-        <AnalyticsPage
-          chain={route.chain}
-          address={route.address}
-          onBack={() => {
-            window.location.hash = '';
-          }}
+      <div className="app-layout">
+        <Sidebar
+          activeView="analytics"
+          onNavigate={navigateToView}
+          open={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
         />
+        <div className="main-area">
+          <TopNav
+            connected={isConnected()}
+            onMenuToggle={() => setSidebarOpen((p) => !p)}
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+          />
+          <main className="main-content">
+            <AnalyticsPage
+              chain={route.chain}
+              address={route.address}
+              onBack={() => {
+                window.location.hash = '';
+                setRoute({ view: 'main' });
+              }}
+            />
+          </main>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="app">
-      <Header connected={isConnected()} />
-      {!isConnected() && <ConnectionBanner />}
-      <AlertNotification alerts={alerts} />
-      <main className="main-content">
-        <div className="main-left">
-          <AnalyticsCards />
-          <ChartsSection />
-          <StatsSection />
-          <TokenGrid
-            newKeys={newKeys}
-            onAnalytics={navigateToAnalytics}
-            isWatched={isWatched}
-            onToggleWatch={(chain, address) => {
-              if (isWatched(chain, address)) {
-                removeFromWatchlist(chain, address);
-              } else {
-                const token = liveTokens.find(
-                  (t) => t.chain === chain && t.contractAddress === address,
-                );
-                if (token) {
-                  addToWatchlist({
-                    id: `${chain}:${address}`,
-                    chain: token.chain,
-                    contractAddress: token.contractAddress,
-                    tokenName: token.tokenName,
-                    tokenSymbol: token.tokenSymbol,
-                    riskScore: token.riskScore,
-                    riskLevel: token.riskLevel,
-                  });
-                }
-              }
-            }}
+    <div className="app-layout">
+      <Sidebar
+        activeView={activeView}
+        onNavigate={navigateToView}
+        open={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+      />
+      <div className="main-area">
+        <TopNav
+          connected={isConnected()}
+          onMenuToggle={() => setSidebarOpen((p) => !p)}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          unreadCount={unreadCount}
+          onBellClick={() => markAllSeen()}
+        />
+        {!isConnected() && <ConnectionBanner />}
+        <AlertNotification alerts={alerts} />
+        <main className="main-content">
+          <AnimatePresence mode="wait">
+            {activeView === 'dashboard' && (
+              <>
+                <HeroSection />
+                <AnalyticsCards />
+                <ChartsSection />
+                <StatsSection />
+                <TokenGrid
+                  newKeys={newKeys}
+                  onAnalytics={navigateToAnalytics}
+                  isWatched={isWatched}
+                  onToggleWatch={(chain, address) => {
+                    if (isWatched(chain, address)) {
+                      removeFromWatchlist(chain, address);
+                    } else {
+                      const token = liveTokens.find(
+                        (t) => t.chain === chain && t.contractAddress === address,
+                      );
+                      if (token) {
+                        addToWatchlist({
+                          id: `${chain}:${address}`,
+                          chain: token.chain,
+                          contractAddress: token.contractAddress,
+                          tokenName: token.tokenName,
+                          tokenSymbol: token.tokenSymbol,
+                          riskScore: token.riskScore,
+                          riskLevel: token.riskLevel,
+                        });
+                      }
+                    }
+                  }}
+                />
+              </>
+            )}
+            {activeView === 'tokens' && (
+              <TokenGrid
+                newKeys={newKeys}
+                onAnalytics={navigateToAnalytics}
+                isWatched={isWatched}
+                onToggleWatch={(chain, address) => {
+                  if (isWatched(chain, address)) {
+                    removeFromWatchlist(chain, address);
+                  } else {
+                    const token = liveTokens.find(
+                      (t) => t.chain === chain && t.contractAddress === address,
+                    );
+                    if (token) {
+                      addToWatchlist({
+                        id: `${chain}:${address}`,
+                        chain: token.chain,
+                        contractAddress: token.contractAddress,
+                        tokenName: token.tokenName,
+                        tokenSymbol: token.tokenSymbol,
+                        riskScore: token.riskScore,
+                        riskLevel: token.riskLevel,
+                      });
+                    }
+                  }
+                }}
+              />
+            )}
+            {activeView === 'chains' && (
+              <div className="main-with-sidebar">
+                <div className="main-left">
+                  <HeroSection />
+                  <ChainPanel />
+                </div>
+                <aside className="main-right">
+                  <WatchlistPanel
+                    items={watchlist}
+                    onRemove={removeFromWatchlist}
+                    liveTokens={liveTokens}
+                  />
+                </aside>
+              </div>
+            )}
+            {activeView === 'settings' && (
+              <div className="empty-state">
+                <div className="empty-state-icon">
+                  <svg
+                    width="48"
+                    height="48"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <circle cx="12" cy="12" r="3" />
+                    <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+                  </svg>
+                </div>
+                <div>Settings</div>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
+                  Coming soon
+                </div>
+              </div>
+            )}
+          </AnimatePresence>
+        </main>
+        <div className="header-controls">
+          <AlertBell
+            unreadCount={unreadCount}
+            alerts={alerts}
+            onMarkAllSeen={markAllSeen}
+            onClearAll={clearAlerts}
           />
         </div>
-        <aside className="main-right">
-          <ChainPanel />
-          <WatchlistPanel
-            items={watchlist}
-            onRemove={removeFromWatchlist}
-            liveTokens={liveTokens}
-          />
-        </aside>
-      </main>
-      <div className="header-controls">
-        <AlertBell
-          unreadCount={unreadCount}
-          alerts={alerts}
-          onMarkAllSeen={markAllSeen}
-          onClearAll={clearAlerts}
-        />
       </div>
     </div>
   );
