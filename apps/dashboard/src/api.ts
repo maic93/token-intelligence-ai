@@ -1,4 +1,10 @@
-import type { TokenListResponse, StatsResponse, ChainsResponse, AnalyticsResponse } from './types';
+import type {
+  RiskAnalysis,
+  TokenListResponse,
+  StatsResponse,
+  ChainsResponse,
+  AnalyticsResponse,
+} from './types';
 
 const API_BASE = '/api';
 
@@ -48,6 +54,17 @@ export function fetchAnalytics(
 ): Promise<AnalyticsResponse> {
   return fetchJson<AnalyticsResponse>(
     `${API_BASE}/analytics/${encodeURIComponent(chain)}/${encodeURIComponent(address)}`,
+    signal,
+  );
+}
+
+export function fetchAnalysis(
+  chain: string,
+  address: string,
+  signal?: AbortSignal,
+): Promise<{ data: RiskAnalysis }> {
+  return fetchJson<{ data: RiskAnalysis }>(
+    `${API_BASE}/analysis/${encodeURIComponent(address)}?chain=${encodeURIComponent(chain)}`,
     signal,
   );
 }

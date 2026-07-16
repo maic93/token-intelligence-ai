@@ -1,4 +1,4 @@
-import { prisma, TokenRepository } from '@token-intelligence-ai/database';
+import { prisma, AnalysisRepository, TokenRepository } from '@token-intelligence-ai/database';
 import { createLogger } from '@token-intelligence-ai/shared';
 import type { Logger } from '@token-intelligence-ai/shared';
 import { getEnabledChains, type ChainConfig } from '@token-intelligence-ai/blockchain';
@@ -29,8 +29,9 @@ async function resolveStartBlock(
 async function runWorker(chain: ChainConfig): Promise<void> {
   const workerLog: Logger = createLogger(`indexer:${chain.displayName}`);
   const tokenRepo = new TokenRepository(prisma);
+  const analysisRepo = new AnalysisRepository(prisma);
   const rpc = new RpcClient(chain.rpcUrl, workerLog);
-  const processor = new BlockProcessor(chain, rpc, tokenRepo, workerLog);
+  const processor = new BlockProcessor(chain, rpc, tokenRepo, analysisRepo, workerLog);
 
   const currentBlock = await resolveStartBlock(
     tokenRepo,

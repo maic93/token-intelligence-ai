@@ -13,6 +13,7 @@ import { tokensRouter } from './routes/tokens.js';
 import { statsRouter } from './routes/stats.js';
 import { chainsRouter } from './routes/chains.js';
 import { metricsRouter, trackRequest, initMetrics } from './routes/metrics.js';
+import { analysisRouter } from './routes/analysis.js';
 import { analyticsRouter, initAnalytics } from './routes/analytics.js';
 import { errorHandler } from './middleware/error-handler.js';
 import { requestLogger } from './middleware/request-logger.js';
@@ -59,6 +60,7 @@ app.use('/metrics', metricsRouter);
 app.use('/api/tokens', tokensRouter);
 app.use('/api/stats', statsRouter);
 app.use('/api/chains', chainsRouter);
+app.use('/api/analysis', analysisRouter);
 app.use('/api/analytics', analyticsRouter);
 
 if (config.NODE_ENV === 'production') {

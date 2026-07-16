@@ -4,6 +4,7 @@
     { "path": "./apps/api" },
     { "path": "./apps/indexer" },
     { "path": "./packages/ai" },
+    { "path": "./packages/analysis" },
     { "path": "./packages/analytics" },
     { "path": "./packages/blockchain" },
     { "path": "./packages/config" },

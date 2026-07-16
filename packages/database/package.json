@@ -15,7 +15,8 @@
   },
   "dependencies": {
     "@prisma/client": "^6.9.0",
-    "@token-intelligence-ai/blockchain": "workspace:*"
+    "@token-intelligence-ai/blockchain": "workspace:*",
+    "@token-intelligence-ai/shared": "workspace:*"
   },
   "devDependencies": {
     "prisma": "^6.9.0"

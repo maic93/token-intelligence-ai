@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import type { AnalyticsReport } from '../types';
-import { fetchAnalytics } from '../api';
+import type { AnalyticsReport, RiskAnalysis } from '../types';
+import { fetchAnalytics, fetchAnalysis } from '../api';
 import { shortAddress } from '../utils';
 
 interface AnalyticsPageProps {
@@ -46,8 +46,88 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
+function riskBadgeClass(level: string): string {
+  switch (level) {
+    case 'very_safe':
+      return 'risk-very-safe';
+    case 'low':
+      return 'risk-low';
+    case 'medium':
+      return 'risk-medium';
+    case 'high':
+      return 'risk-high';
+    case 'critical':
+      return 'risk-critical';
+    default:
+      return 'risk-unknown';
+  }
+}
+
+function riskLabel(level: string): string {
+  switch (level) {
+    case 'very_safe':
+      return 'Very Safe';
+    case 'low':
+      return 'Low Risk';
+    case 'medium':
+      return 'Medium Risk';
+    case 'high':
+      return 'High Risk';
+    case 'critical':
+      return 'Critical';
+    default:
+      return level;
+  }
+}
+
+function RiskSection({ analysis }: { analysis: RiskAnalysis }) {
+  return (
+    <Section title={`Risk Analysis — Score: ${analysis.riskScore}/100`}>
+      <div className="analytics-field">
+        <span className="analytics-field-label">Risk Level</span>
+        <span className={`risk-badge ${riskBadgeClass(analysis.riskLevel)}`}>
+          {riskLabel(analysis.riskLevel)}
+        </span>
+      </div>
+      <div className="analytics-field">
+        <span className="analytics-field-label">Explanation</span>
+        <span className="analytics-field-value">{analysis.explanation}</span>
+      </div>
+      <div className="analytics-field">
+        <span className="analytics-field-label">Analyzed At</span>
+        <span className="analytics-field-value">
+          {new Date(analysis.analyzedAt).toLocaleString()}
+        </span>
+      </div>
+      <div style={{ marginTop: 12 }}>
+        <h4 style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 8 }}>
+          Rule Results
+        </h4>
+        {analysis.factors.map((f) => (
+          <div key={f.rule} className="detail-row" style={{ marginBottom: 4 }}>
+            <span className="detail-label" style={{ flex: 1 }}>
+              {f.rule.replace(/_/g, ' ')}
+            </span>
+            <span
+              className="detail-value"
+              title={f.reason}
+              style={{
+                color: f.passed ? 'var(--green)' : 'var(--red)',
+                marginRight: 8,
+              }}
+            >
+              {f.passed ? 'PASS' : `FAIL -${f.penalty}`}
+            </span>
+          </div>
+        ))}
+      </div>
+    </Section>
+  );
+}
+
 export function AnalyticsPage({ chain, address, onBack }: AnalyticsPageProps) {
   const [report, setReport] = useState<AnalyticsReport | null>(null);
+  const [analysis, setAnalysis] = useState<RiskAnalysis | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -55,9 +135,16 @@ export function AnalyticsPage({ chain, address, onBack }: AnalyticsPageProps) {
     const abort = new AbortController();
     setLoading(true);
     setError(null);
-    fetchAnalytics(chain, address, abort.signal)
-      .then((res) => {
-        setReport(res.data);
+
+    Promise.all([
+      fetchAnalytics(chain, address, abort.signal).then((r) => r.data),
+      fetchAnalysis(chain, address, abort.signal)
+        .then((r) => r.data)
+        .catch(() => null),
+    ])
+      .then(([reportData, analysisData]) => {
+        setReport(reportData);
+        setAnalysis(analysisData);
         setLoading(false);
       })
       .catch((err: Error) => {
@@ -66,6 +153,7 @@ export function AnalyticsPage({ chain, address, onBack }: AnalyticsPageProps) {
           setLoading(false);
         }
       });
+
     return () => abort.abort();
   }, [chain, address]);
 
@@ -107,6 +195,8 @@ export function AnalyticsPage({ chain, address, onBack }: AnalyticsPageProps) {
       </div>
 
       <div className="analytics-grid">
+        {analysis && <RiskSection analysis={analysis} />}
+
         <Section title="Token Overview">
           <Field
             label="Token Age"

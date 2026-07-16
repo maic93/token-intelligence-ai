@@ -8,7 +8,7 @@ datasource db {
 }
 
 model Token {
-  id              String   @id @default(uuid())
+  id              String          @id @default(uuid())
   chain           String
   chainId         Int
   contractAddress String
@@ -17,10 +17,11 @@ model Token {
   symbol          String
   decimals        Int
   totalSupply     String
-  discoveredAt    DateTime @default(now())
+  discoveredAt    DateTime        @default(now())
   blockNumber     BigInt
   blockTimestamp  DateTime
   transactionHash String
+  analysis        TokenAnalysis?
 
   @@unique([chain, contractAddress])
   @@index([chain])
@@ -29,11 +30,26 @@ model Token {
   @@map("tokens")
 }
 
+model TokenAnalysis {
+  id          String   @id @default(uuid())
+  tokenId     String   @unique
+  token       Token    @relation(fields: [tokenId], references: [id], onDelete: Cascade)
+  riskScore   Int
+  riskLevel   String
+  explanation String
+  factors     Json
+  analyzedAt  DateTime @default(now())
+
+  @@index([riskScore])
+  @@index([riskLevel])
+  @@map("token_analyses")
+}
+
 model SyncCursor {
-  id        String   @id
-  chain     String
+  id          String   @id
+  chain       String
   blockNumber BigInt
-  updatedAt DateTime @updatedAt
+  updatedAt   DateTime @updatedAt
 
   @@unique([id, chain])
   @@map("sync_cursors")
