@@ -7,5 +7,11 @@
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "redis": "^4.6.0",
+    "@token-intelligence-ai/blockchain": "workspace:*",
+    "@token-intelligence-ai/database": "workspace:*",
+    "@token-intelligence-ai/shared": "workspace:*"
   }
 }

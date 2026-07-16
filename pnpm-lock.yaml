@@ -37,6 +37,9 @@ importers:
 
   apps/api:
     dependencies:
+      '@token-intelligence-ai/analytics':
+        specifier: workspace:*
+        version: link:../../packages/analytics
       '@token-intelligence-ai/blockchain':
         specifier: workspace:*
         version: link:../../packages/blockchain
@@ -139,7 +142,20 @@ importers:
 
   packages/ai: {}
 
-  packages/analytics: {}
+  packages/analytics:
+    dependencies:
+      '@token-intelligence-ai/blockchain':
+        specifier: workspace:*
+        version: link:../blockchain
+      '@token-intelligence-ai/database':
+        specifier: workspace:*
+        version: link:../database
+      '@token-intelligence-ai/shared':
+        specifier: workspace:*
+        version: link:../shared
+      redis:
+        specifier: ^4.6.0
+        version: 4.7.1
 
   packages/blockchain: {}
 

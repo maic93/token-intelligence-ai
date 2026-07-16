@@ -1,4 +1,4 @@
-import type { TokenListResponse, StatsResponse, ChainsResponse } from './types';
+import type { TokenListResponse, StatsResponse, ChainsResponse, AnalyticsResponse } from './types';
 
 const API_BASE = '/api';
 
@@ -39,6 +39,17 @@ export function fetchStats(signal?: AbortSignal): Promise<StatsResponse> {
 
 export function fetchChains(signal?: AbortSignal): Promise<ChainsResponse> {
   return fetchJson<ChainsResponse>(`${API_BASE}/chains`, signal);
+}
+
+export function fetchAnalytics(
+  chain: string,
+  address: string,
+  signal?: AbortSignal,
+): Promise<AnalyticsResponse> {
+  return fetchJson<AnalyticsResponse>(
+    `${API_BASE}/analytics/${encodeURIComponent(chain)}/${encodeURIComponent(address)}`,
+    signal,
+  );
 }
 
 export function createWebSocketUrl(): string {

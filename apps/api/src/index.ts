@@ -13,6 +13,7 @@ import { tokensRouter } from './routes/tokens.js';
 import { statsRouter } from './routes/stats.js';
 import { chainsRouter } from './routes/chains.js';
 import { metricsRouter, trackRequest, initMetrics } from './routes/metrics.js';
+import { analyticsRouter, initAnalytics } from './routes/analytics.js';
 import { errorHandler } from './middleware/error-handler.js';
 import { requestLogger } from './middleware/request-logger.js';
 import { requestIdMiddleware } from './middleware/request-id.js';
@@ -21,6 +22,7 @@ const log = createLogger('api');
 const app: import('express').Application = express();
 
 initMetrics();
+initAnalytics(config.REDIS_URL);
 
 app.set('trust proxy', 1);
 app.disable('x-powered-by');
@@ -57,6 +59,7 @@ app.use('/metrics', metricsRouter);
 app.use('/api/tokens', tokensRouter);
 app.use('/api/stats', statsRouter);
 app.use('/api/chains', chainsRouter);
+app.use('/api/analytics', analyticsRouter);
 
 if (config.NODE_ENV === 'production') {
   const dashboardPath = path.resolve(import.meta.dirname, '../../dashboard/dist');

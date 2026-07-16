@@ -17,6 +17,7 @@
     "redis": "^4.6.0",
     "ws": "^8.0.0",
     "zod": "^3.23.0",
+    "@token-intelligence-ai/analytics": "workspace:*",
     "@token-intelligence-ai/blockchain": "workspace:*",
     "@token-intelligence-ai/config": "workspace:*",
     "@token-intelligence-ai/database": "workspace:*",

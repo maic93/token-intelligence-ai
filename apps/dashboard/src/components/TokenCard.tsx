@@ -5,9 +5,10 @@ import { explorerUrl, shortAddress, timeAgo } from '../utils';
 interface TokenCardProps {
   token: TokenData;
   isNew?: boolean;
+  onAnalytics?: (chain: string, address: string) => void;
 }
 
-export function TokenCard({ token, isNew }: TokenCardProps) {
+export function TokenCard({ token, isNew, onAnalytics }: TokenCardProps) {
   const [copied, setCopied] = useState(false);
 
   function handleCopy() {
@@ -66,6 +67,15 @@ export function TokenCard({ token, isNew }: TokenCardProps) {
         >
           Explorer
         </a>
+        {onAnalytics && (
+          <button
+            className="btn btn-analytics"
+            onClick={() => onAnalytics(token.chain, token.contractAddress)}
+            type="button"
+          >
+            Analytics
+          </button>
+        )}
       </div>
     </div>
   );

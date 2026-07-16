@@ -9,9 +9,11 @@ const PAGE_SIZE = 12;
 export function TokenGrid({
   liveTokens,
   newKeys,
+  onAnalytics,
 }: {
   liveTokens: TokenData[];
   newKeys: Set<string>;
+  onAnalytics?: (chain: string, address: string) => void;
 }) {
   const {
     loading,
@@ -97,6 +99,7 @@ export function TokenGrid({
                 key={`${t.chain}:${t.contractAddress}`}
                 token={t}
                 isNew={newKeys.has(`${t.chain}:${t.contractAddress}`)}
+                onAnalytics={onAnalytics}
               />
             ))}
           </div>
