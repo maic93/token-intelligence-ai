@@ -1,4 +1,6 @@
 import { useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { X } from 'lucide-react';
 import type { TokenData } from '../types';
 
 interface Props {
@@ -7,12 +9,12 @@ interface Props {
 }
 
 function scoreColor(score: number | null): string {
-  if (score === null) return 'var(--text-secondary)';
-  if (score <= 20) return 'var(--green)';
-  if (score <= 40) return '#4ade80';
-  if (score <= 60) return 'var(--orange)';
-  if (score <= 80) return '#f87171';
-  return 'var(--red)';
+  if (score === null) return 'var(--text-muted)';
+  if (score <= 20) return '#4ade80';
+  if (score <= 40) return '#a3e635';
+  if (score <= 60) return '#facc15';
+  if (score <= 80) return '#fb923c';
+  return '#f87171';
 }
 
 function check(val: boolean | undefined, label: string): { label: string; ok: boolean } {
@@ -40,11 +42,17 @@ export function RiskDetailsModal({ token, onClose }: Props) {
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+      <motion.div
+        className="modal-content"
+        onClick={(e) => e.stopPropagation()}
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.15 }}
+      >
         <div className="modal-header">
-          <h3>Risk Details</h3>
-          <button className="modal-close" onClick={onClose} type="button">
-            &times;
+          <h3>Risk Details — {token.tokenSymbol}</h3>
+          <button className="modal-close" onClick={onClose} type="button" aria-label="Close">
+            <X size={18} />
           </button>
         </div>
         <div className="modal-body">
@@ -83,7 +91,7 @@ export function RiskDetailsModal({ token, onClose }: Props) {
             </div>
           </div>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }
