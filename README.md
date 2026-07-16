@@ -1,67 +1,157 @@
 # Token Intelligence AI
 
-AI-powered blockchain intelligence platform for discovering, tracking, and analyzing newly deployed tokens across EVM networks.
+<div align="center">
+
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue?logo=typescript)](https://www.typescriptlang.org/)
+[![Node.js](https://img.shields.io/badge/Node.js-22-green?logo=node.js)](https://nodejs.org/)
+[![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker)](https://docker.com/)
+[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![pnpm](https://img.shields.io/badge/pnpm-9.15-F69220?logo=pnpm)](https://pnpm.io/)
+[![CI](https://github.com/maic93/token-intelligence-ai/actions/workflows/ci.yml/badge.svg)](https://github.com/maic93/token-intelligence-ai/actions)
+
+**Multi-chain ERC-20 discovery platform with real-time monitoring and production API.**
+
+</div>
+
+Token Intelligence AI is an open-source platform that continuously indexes supported EVM blockchains for newly deployed ERC-20 tokens, stores enriched token metadata in PostgreSQL, exposes a production-grade REST API with WebSocket streaming, and provides a real-time React dashboard for monitoring.
+
+---
+
+## Features
+
+- **Multi-chain Indexing** — Base, Ethereum, Polygon, Robinhood chain
+- **Automatic ERC-20 Detection** — Symbol, decimals, total supply, deployer extraction
+- **PostgreSQL + Prisma** — Type-safe ORM with automatic migrations
+- **Redis Caching** — Token lists cached 15s, individual tokens 5min, stats 30s
+- **REST API** — Paginated token lists, per-token lookup, platform stats, chain status
+- **WebSocket Updates** — Live token discovery pushed to connected clients
+- **Real-time Dashboard** — React 19 + Vite 6 dark-theme UI
+- **Analytics Engine** — Token, holder, liquidity, transaction, deployer, and chain analytics
+- **Docker Deployment** — Multi-stage builds, healthchecks, Compose orchestration
+- **Structured JSON Logging** — Pretty-print in dev, JSON in production, log levels
+- **Health & Readiness Endpoints** — Dependency probing for Kubernetes
+- **Prometheus Metrics** — HTTP request count/duration, indexed tokens, WS clients
+- **Security Hardening** — Helmet, rate limiting, CORS, trusted proxy, request IDs
+- **TypeScript Strict Mode** — Full-stack type safety across monorepo
+
+---
 
 ## Architecture
 
 ```
-┌─────────────┐     ┌─────────────┐     ┌──────────────┐
-│  Dashboard   │────▶│     API     │────▶│  PostgreSQL   │
-│  (Vite/React)│     │  (Express)  │     │   (Prisma)    │
-└─────────────┘     │             │     └──────────────┘
-                    │  /health    │     ┌──────────────┐
-                    │  /ready     │────▶│    Redis      │
-                    │  /metrics   │     │   (Cache/WS)  │
-                    │  /api/*     │     └──────────────┘
-                    └─────┬───────┘
-                          │
-                    ┌─────▼───────┐
-                    │   Indexer    │
-                    │(multi-chain) │
-                    └─────────────┘
+                    ┌───────────────────────────┐
+                    │     RPC Nodes             │
+                    │  Base  ETH  Polygon  RH   │
+                    └───────────┬───────────────┘
+                                │
+                    ┌───────────▼───────────────┐
+                    │   Multi-chain Indexer     │
+                    │   (one worker per chain)  │
+                    │   ERC-20 Detection Engine │
+                    └───────────┬───────────────┘
+                                │
+                    ┌───────────▼───────────────┐
+                    │       PostgreSQL          │
+                    │   (Prisma ORM, Migrations)│
+                    └───────┬───────────┬───────┘
+                            │           │
+              ┌─────────────▼──┐  ┌─────▼──────────┐
+              │   REST API     │  │  Redis Pub/Sub │
+              │  (Express)     │  │  (Cache + WS)  │
+              └───────┬───────┘  └─────┬──────────┘
+                      │                 │
+              ┌───────┴─────────────────┴───────┐
+              │        React Dashboard          │
+              │   (Vite, WebSocket, Analytics)  │
+              └─────────────────────────────────┘
 ```
 
-## Prerequisites
+---
 
-- Node.js >= 22
-- pnpm >= 9
-- Docker & Docker Compose
+## Tech Stack
+
+| Component     | Technology                             |
+| ------------- | -------------------------------------- |
+| Runtime       | Node.js 22                             |
+| Language      | TypeScript 5.7 (strict mode)           |
+| Package Mgr   | pnpm 9.15 (workspace monorepo)         |
+| ORM           | Prisma 6                               |
+| Database      | PostgreSQL 16                          |
+| Cache         | Redis 7                                |
+| API Framework | Express 4                              |
+| Frontend      | React 19 + Vite 6                      |
+| Container     | Docker + Compose (multi-stage, Alpine) |
+| Linting       | ESLint 8 + Prettier 3                  |
+| Git Hooks     | Husky + lint-staged                    |
+
+---
+
+## Repository Structure
+
+```
+token-intelligence-ai/
+├── apps/
+│   ├── api/           Express API server (port 4000)
+│   ├── dashboard/     React 19 + Vite 6 dashboard
+│   └── indexer/       Multi-chain block indexer
+├── packages/
+│   ├── ai/            AI analysis utilities (future)
+│   ├── analytics/     Analytics pipeline (token, holder, liquidity, etc.)
+│   ├── blockchain/    Chain abstraction + config
+│   ├── config/        Shared env validation via Zod
+│   ├── database/      Prisma schema + repositories
+│   ├── shared/        Logger, types, common utilities
+│   └── ui/            Shared UI components (future)
+├── docs/
+│   └── images/        Screenshots
+├── .github/           Issue/PR templates
+├── Dockerfile         Multi-stage Docker build
+├── docker-compose.yml Service orchestration
+└── pnpm-workspace.yaml
+```
+
+---
 
 ## Quick Start
 
+### Requirements
+
+- Node.js >= 22
+- pnpm >= 9.15
+- Docker & Docker Compose
+
+### Clone and Run
+
 ```bash
-# 1. Clone and enter directory
-git clone <repo>
+# Clone the repository
+git clone https://github.com/maic93/token-intelligence-ai.git
 cd token-intelligence-ai
 
-# 2. Copy environment file
+# Copy environment file and edit as needed
 cp .env.example .env
 
-# 3. Start infrastructure (PostgreSQL + Redis)
+# Start infrastructure (PostgreSQL + Redis)
 docker compose up -d postgres redis
 
-# 4. Install dependencies
+# Install dependencies
 pnpm install
 
-# 5. Build all packages
+# Build all packages
 pnpm build
 
-# 6. Run database migrations
-cd packages/database
-npx prisma migrate deploy
-cd ../..
-
-# 7. Start API (in one terminal)
+# Start API (terminal 1)
 pnpm --filter @token-intelligence-ai/api dev
 
-# 8. Start Indexer (in another terminal)
+# Start Indexer (terminal 2)
 pnpm --filter @token-intelligence-ai/indexer dev
 
-# 9. Start Dashboard (in another terminal)
+# Start Dashboard (terminal 3)
 pnpm --filter @token-intelligence-ai/dashboard dev
 ```
 
-## Docker Deployment
+The dashboard is available at `http://localhost:5173`.
+
+### Docker Production
 
 ```bash
 # Build and start all services
@@ -73,14 +163,18 @@ docker compose up --build api
 docker compose up --build indexer
 ```
 
+API is available at `http://localhost:4000`.
+
+---
+
 ## Environment Variables
 
 ### General
 
-| Variable    | Default       | Description                                     |
-| ----------- | ------------- | ----------------------------------------------- |
-| `NODE_ENV`  | `development` | Runtime environment                             |
-| `LOG_LEVEL` | `info`        | Logging level: `debug`, `info`, `warn`, `error` |
+| Variable    | Default       | Description                                      |
+| ----------- | ------------- | ------------------------------------------------ |
+| `NODE_ENV`  | `development` | Runtime environment                              |
+| `LOG_LEVEL` | `info`        | Logging level (`debug`, `info`, `warn`, `error`) |
 
 ### API
 
@@ -104,6 +198,8 @@ docker compose up --build indexer
 
 ### Chain RPC URLs
 
+Set the RPC URL for each chain to enable it. Chains without a URL are automatically disabled.
+
 | Variable            | Chain            |
 | ------------------- | ---------------- |
 | `BASE_RPC_URL`      | Base             |
@@ -111,9 +207,13 @@ docker compose up --build indexer
 | `POLYGON_RPC_URL`   | Polygon          |
 | `ROBINHOOD_RPC_URL` | Robinhood Chain  |
 
-Set a chain's RPC URL to enable it. Chains without a configured URL are disabled.
+### Analytics
 
-## API Endpoints
+Analytics uses the same `REDIS_URL` as the API for caching. Falls back to in-memory cache if Redis is unavailable.
+
+---
+
+## API Documentation
 
 ### `GET /health`
 
@@ -139,178 +239,183 @@ Returns service health including database and Redis connectivity.
 ```json
 {
   "status": "degraded",
-  "service": "api",
-  ...
   "database": "error",
-  "redis": "disconnected",
-  ...
+  "redis": "disconnected"
 }
 ```
 
 ### `GET /ready`
 
-Readiness probe for Kubernetes / orchestration.
-
-**Response (ready):** `200 OK`
+Kubernetes readiness probe. Returns 200 when database and at least one chain are available.
 
 ```json
 {
   "ready": true,
   "database": true,
-  "redis": true,
+  "redis": "connected",
   "chainsConfigured": 3,
   "timestamp": "2026-07-16T12:00:00.000Z"
 }
 ```
 
-**Response (not ready):** `503 Service Unavailable`
-
 ### `GET /metrics`
 
-Prometheus metrics for monitoring and alerting.
-
-**Metrics exposed:**
-
-- `http_requests_total` (method, route, status_code)
-- `http_request_duration_ms` (method, route, status_code) — histogram
-- `indexed_tokens_total` — gauge
-- `indexed_blocks_total` (chain) — gauge
-- `websocket_clients` — gauge
-- `redis_cache_hits_total` — counter
-- `redis_cache_misses_total` — counter
-- Default Node.js metrics (CPU, memory, event loop)
+Prometheus metrics endpoint. Exposes HTTP request count/duration, indexed tokens, WebSocket clients, Redis cache hit/miss, and default Node.js metrics.
 
 ### `GET /api/tokens`
 
-List discovered tokens with pagination and chain filtering.
+List discovered tokens with pagination and optional chain filter.
 
-**Query parameters:**
+| Param   | Type | Default | Description                                                 |
+| ------- | ---- | ------- | ----------------------------------------------------------- |
+| `page`  | int  | `1`     | Page number (1-indexed)                                     |
+| `limit` | int  | `20`    | Items per page (max 100)                                    |
+| `chain` | enum | —       | Filter by chain: `base`, `ethereum`, `polygon`, `robinhood` |
 
-- `page` (int, default: 1)
-- `limit` (int, default: 20, max: 100)
-- `chain` (optional: base, ethereum, polygon, robinhood)
+```json
+{
+  "data": [
+    {
+      "contractAddress": "0x1234...abcd",
+      "chain": "base",
+      "chainId": 8453,
+      "tokenName": "MyToken",
+      "tokenSymbol": "MTK",
+      "decimals": 18,
+      "totalSupply": "1000000000000000000000000",
+      "deployer": "0xabcd...5678",
+      "blockNumber": "12345678",
+      "blockTimestamp": "2026-07-16T12:00:00.000Z",
+      "transactionHash": "0xabcd...ef01"
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 20
+  }
+}
+```
 
 ### `GET /api/tokens/:address`
 
-Get a specific token by contract address.
+Look up a specific token by contract address. Requires `?chain=` query parameter.
 
-**Query parameters:**
-
-- `chain` (required)
+```json
+{
+  "data": {
+    "contractAddress": "0x1234...abcd",
+    "chain": "base",
+    "chainId": 8453,
+    "tokenName": "MyToken",
+    "tokenSymbol": "MTK",
+    "decimals": 18,
+    "totalSupply": "1000000000000000000000000",
+    "deployer": "0xabcd...5678",
+    "blockNumber": "12345678",
+    "blockTimestamp": "2026-07-16T12:00:00.000Z",
+    "transactionHash": "0xabcd...ef01"
+  }
+}
+```
 
 ### `GET /api/stats`
 
 Platform statistics.
 
-### `GET /api/chains`
-
-Chain configuration and status.
-
-## Project Structure
-
-```
-├── apps/
-│   ├── api/          Express API server
-│   ├── dashboard/    React/Vite frontend
-│   └── indexer/      Multi-chain block indexer
-├── packages/
-│   ├── ai/           AI analysis utilities
-│   ├── analytics/    Analytics primitives
-│   ├── blockchain/   Chain abstraction layer
-│   ├── config/       Shared environment configuration (Zod)
-│   ├── database/     Prisma ORM + repository layer
-│   ├── shared/       Shared utilities and logging
-│   └── ui/           Reusable UI components
-├── Dockerfile        Multi-stage Docker build
-├── docker-compose.yml
-└── pnpm-workspace.yaml
-```
-
-## Analytics Engine
-
-The `@token-intelligence-ai/analytics` package provides a modular analytics pipeline for computing token intelligence metrics.
-
-### Architecture
-
-```
-AnalyticsOrchestrator
-  ├── Collectors (data gathering)
-  │   ├── TokenCollector      — token metadata, age, creator
-  │   ├── LiquidityCollector  — liquidity, market cap, DEX data
-  │   ├── HolderCollector     — distribution, whale concentration
-  │   ├── TransactionCollector — volume, buyers/sellers, tx patterns
-  │   ├── DeployerCollector   — deployer history, previous tokens
-  │   └── ChainCollector      — sync status, RPC health
-  ├── Repository  (Prisma queries)
-  ├── Cache       (Redis with in-memory fallback)
-  └── Report      (unified AnalyticsReport)
-```
-
-### `AnalyticsReport`
-
-| Section                | Description                                                                    |
-| ---------------------- | ------------------------------------------------------------------------------ |
-| `tokenAnalytics`       | Token age, chain, creator, supply, contract type, proxy/ownership flags        |
-| `holderAnalytics`      | Top holder %, whale concentration, distribution score, holder growth           |
-| `liquidityAnalytics`   | Liquidity, market cap, FDV, locked liquidity, DEX count                        |
-| `transactionAnalytics` | 24h transactions, unique buyers/sellers, buy/sell ratio, volume                |
-| `deployerAnalytics`    | Deployed contracts, previous tokens, known deployer flag, deployment frequency |
-| `chainAnalytics`       | Latest indexed block, indexed tokens, RPC health, sync delay                   |
-
-### `GET /api/analytics/:chain/:address`
-
-Returns a complete `AnalyticsReport` for the specified token.
-
-**Path parameters:**
-
-- `chain` — chain name (base, ethereum, polygon, robinhood)
-- `address` — token contract address (0x-prefixed)
-
-**Response:** `200 OK`
-
 ```json
 {
   "data": {
-    "token": { "contractAddress": "0x...", "chain": "base" },
-    "chain": "base",
-    "tokenAnalytics": { ... },
-    "holderAnalytics": { ... },
-    "liquidityAnalytics": { ... },
-    "transactionAnalytics": { ... },
-    "deployerAnalytics": { ... },
-    "chainAnalytics": { ... },
-    "generatedAt": "2026-07-16T12:00:00.000Z",
-    "version": "0.1.0"
+    "totalTokens": 1542,
+    "recentTokens24h": 89,
+    "uniqueDeployers": 423,
+    "chains": [
+      { "chain": "base", "count": 712 },
+      { "chain": "ethereum", "count": 430 },
+      { "chain": "polygon", "count": 400 }
+    ],
+    "cursors": [{ "chain": "base", "blockNumber": "12345678" }],
+    "updatedAt": "2026-07-16T12:00:00.000Z"
   }
 }
 ```
 
-**Cache:** Results are cached for 5 minutes by chain + contract address. Cache key format: `analytics:{chain}:{address}`.
+### `GET /api/chains`
 
-### Future AI Integration
+Chain configuration and indexing status.
 
-The analytics pipeline is designed as the data foundation for the AI Risk Engine. Collectors provide deterministic input data; calculators derive intermediate scores. The future AI layer will consume `AnalyticsReport` to generate risk scores, anomaly detection, and natural-language explanations without re-fetching blockchain data.
+```json
+{
+  "data": {
+    "chains": [
+      {
+        "name": "base",
+        "chainId": 8453,
+        "displayName": "Base",
+        "explorerUrl": "https://basescan.org",
+        "nativeCurrency": { "name": "Ether", "symbol": "ETH", "decimals": 18 },
+        "enabled": true,
+        "tokenCount": 712,
+        "lastSyncedBlock": "12345678",
+        "rpcAvailable": true
+      }
+    ],
+    "updatedAt": "2026-07-16T12:00:00.000Z"
+  }
+}
+```
 
-## Observability
+### `GET /api/analytics/:chain/:address`
 
-- **Health checks:** `/health` reports dependency status; `/ready` reports readiness for orchestration
-- **Metrics:** `/metrics` exposes Prometheus metrics for monitoring and alerting
-- **Logging:** Structured JSON in production, human-readable in development; supports log levels and request IDs
-- **Request IDs:** Every request gets a unique ID (X-Request-Id), propagated through logs and error responses
+Returns a complete analytics report for the specified token. Cached for 5 minutes.
 
-## Security
+| Param     | Type   | Description                           |
+| --------- | ------ | ------------------------------------- |
+| `chain`   | string | Chain name (`base`, `ethereum`, etc.) |
+| `address` | string | Token contract address (0x-prefixed)  |
 
-- Helmet security headers
-- CORS configurable via `CORS_ORIGIN`
-- Rate limiting configurable via `RATE_LIMIT_*` env vars
-- `X-Powered-By` header disabled
-- Trusted proxy support (behind nginx/reverse proxy)
+### WebSocket — `/ws`
+
+Connect to `/ws` for real-time token discovery events.
+
+```json
+{
+  "event": "token:discovery",
+  "data": {
+    "contractAddress": "0x...",
+    "chain": "base",
+    "chainId": 8453,
+    "tokenName": "NewToken",
+    "tokenSymbol": "NEW",
+    "decimals": 18,
+    "totalSupply": "1000000...",
+    "deployer": "0x...",
+    "blockNumber": "12345678",
+    "blockTimestamp": "2026-07-16T12:00:00.000Z",
+    "transactionHash": "0x..."
+  }
+}
+```
+
+---
+
+## Screenshots
+
+| Dashboard                               | Analytics                         |
+| --------------------------------------- | --------------------------------- |
+| ![Dashboard](docs/images/dashboard.png) | ![Analytics](docs/images/api.png) |
+
+_Screenshots are placeholders. Real screenshots will be added after deployment._
+
+---
 
 ## Development
 
 ```bash
-# Lint
-pnpm lint
+# Install dependencies
+pnpm install
+
+# Lint all files
+pnpm lint --max-warnings 0
 
 # TypeScript type-check
 pnpm typecheck
@@ -318,6 +423,60 @@ pnpm typecheck
 # Build all packages
 pnpm build
 
-# Run tests (when available)
-pnpm test
+# Start infrastructure
+docker compose up -d postgres redis
+
+# Run database migrations (first time only)
+cd packages/database && npx prisma migrate deploy && cd ../..
 ```
+
+---
+
+## Contributing
+
+Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct and the pull request process.
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feat/amazing-feature`)
+3. Commit your changes (`git commit -m 'feat: add amazing feature'`)
+4. Push to the branch (`git push origin feat/amazing-feature`)
+5. Open a Pull Request
+
+---
+
+## Roadmap
+
+### Current
+
+- [x] Multi-chain indexing (Base, Ethereum, Polygon, Robinhood)
+- [x] Real-time dashboard with WebSocket updates
+- [x] Production REST API with pagination, filtering, caching
+- [x] Analytics engine (token, holder, liquidity, transaction, deployer, chain)
+- [x] Docker multi-stage deployment with healthchecks
+- [x] Prometheus metrics and structured logging
+
+### Next
+
+- [ ] Token risk scoring engine
+- [ ] AI-powered anomaly detection
+- [ ] Token search and discovery
+- [ ] Real-time alerts and notifications
+- [ ] Portfolio tracking
+- [ ] Authentication and API keys
+- [ ] Historical price and liquidity charts
+- [ ] GraphQL API
+- [ ] Kafka event streaming pipeline
+
+### Future
+
+- [ ] Solana support
+- [ ] Arbitrum support
+- [ ] Optimism support
+- [ ] Avalanche support
+- [ ] BNB Chain support
+
+---
+
+## License
+
+[MIT](LICENSE) © 2026 Token Intelligence AI
