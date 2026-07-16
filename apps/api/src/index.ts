@@ -15,6 +15,9 @@ import { chainsRouter } from './routes/chains.js';
 import { metricsRouter, trackRequest, initMetrics } from './routes/metrics.js';
 import { analysisRouter } from './routes/analysis.js';
 import { analyticsRouter, initAnalytics } from './routes/analytics.js';
+import { deployersRouter } from './routes/deployers.js';
+import { platformAnalyticsRouter } from './routes/platform-analytics.js';
+import { searchRouter } from './routes/search.js';
 import { errorHandler } from './middleware/error-handler.js';
 import { requestLogger } from './middleware/request-logger.js';
 import { requestIdMiddleware } from './middleware/request-id.js';
@@ -61,6 +64,9 @@ app.use('/api/tokens', tokensRouter);
 app.use('/api/stats', statsRouter);
 app.use('/api/chains', chainsRouter);
 app.use('/api/analysis', analysisRouter);
+app.use('/api/search', searchRouter);
+app.use('/api/platform-analytics', platformAnalyticsRouter);
+app.use('/api/deployers', deployersRouter);
 app.use('/api/analytics', analyticsRouter);
 
 if (config.NODE_ENV === 'production') {

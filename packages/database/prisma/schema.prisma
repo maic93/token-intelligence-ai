@@ -27,6 +27,11 @@ model Token {
   @@index([chain])
   @@index([chainId])
   @@index([discoveredAt])
+  @@index([chain, discoveredAt])
+  @@index([name])
+  @@index([symbol])
+  @@index([deployer])
+  @@index([blockNumber])
   @@map("tokens")
 }
 
@@ -42,6 +47,7 @@ model TokenAnalysis {
 
   @@index([riskScore])
   @@index([riskLevel])
+  @@index([riskLevel, riskScore])
   @@map("token_analyses")
 }
 

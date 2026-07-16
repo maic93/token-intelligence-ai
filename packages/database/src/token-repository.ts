@@ -1,4 +1,5 @@
-import { PrismaClient, Token, Prisma } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
+import type { Token } from '@prisma/client';
 import type { ChainName } from '@token-intelligence-ai/blockchain';
 
 export interface CreateTokenInput {
@@ -18,7 +19,31 @@ export interface CreateTokenInput {
 export interface ListTokensOptions {
   chain?: ChainName;
   limit?: number;
-  offset?: number;
+  cursor?: string;
+}
+
+export interface SearchTokensOptions {
+  query?: string;
+  chain?: ChainName;
+  riskLevel?: string;
+  minRiskScore?: number;
+  maxRiskScore?: number;
+  deployer?: string;
+  fromDate?: Date;
+  toDate?: Date;
+  sort?: 'newest' | 'oldest' | 'highest_risk' | 'lowest_risk' | 'name_asc' | 'name_desc';
+  limit?: number;
+  cursor?: string;
+}
+
+export type TokenWithAnalysis = Token & {
+  analysis?: { riskScore: number; riskLevel: string } | null;
+};
+
+export interface SearchTokensResult {
+  items: TokenWithAnalysis[];
+  nextCursor: string | null;
+  total: number;
 }
 
 export class TokenRepository {
@@ -66,17 +91,149 @@ export class TokenRepository {
     return token !== null;
   }
 
-  async listTokens(options: ListTokensOptions = {}): Promise<Token[]> {
-    const { chain, limit = 50, offset = 0 } = options;
+  async listTokens(options: ListTokensOptions = {}): Promise<TokenWithAnalysis[]> {
+    const { chain, limit = 50, cursor } = options;
 
     const where: Prisma.TokenWhereInput = chain ? { chain } : {};
+
+    const findArgs: Prisma.TokenFindManyArgs = {
+      where,
+      orderBy: { discoveredAt: 'desc' },
+      take: limit + 1,
+      include: {
+        analysis: { select: { riskScore: true, riskLevel: true } },
+      },
+    };
+
+    if (cursor) {
+      findArgs.cursor = { id: cursor };
+      findArgs.skip = 1;
+    }
+
+    const items = (await this.prisma.token.findMany(findArgs)) as TokenWithAnalysis[];
+    if (items.length > limit) items.pop();
+    return items;
+  }
+
+  async searchTokens(options: SearchTokensOptions): Promise<SearchTokensResult> {
+    const {
+      query,
+      chain,
+      riskLevel,
+      minRiskScore,
+      maxRiskScore,
+      deployer,
+      fromDate,
+      toDate,
+      sort = 'newest',
+      limit = 20,
+      cursor,
+    } = options;
+
+    const where: Prisma.TokenWhereInput = {};
+
+    if (query) {
+      const q = query.toLowerCase();
+      where.OR = [
+        { name: { contains: q, mode: 'insensitive' } },
+        { symbol: { contains: q, mode: 'insensitive' } },
+        { contractAddress: { contains: q } },
+        { deployer: { contains: q } },
+      ];
+    }
+
+    if (chain) where.chain = chain;
+    if (deployer) where.deployer = deployer.toLowerCase();
+
+    if (fromDate || toDate) {
+      where.discoveredAt = {};
+      if (fromDate) where.discoveredAt.gte = fromDate;
+      if (toDate) where.discoveredAt.lte = toDate;
+    }
+
+    const riskFilter: Prisma.TokenAnalysisWhereInput = {};
+    if (riskLevel) riskFilter.riskLevel = riskLevel;
+    if (minRiskScore !== undefined)
+      riskFilter.riskScore = { ...((riskFilter.riskScore as object) || {}), gte: minRiskScore };
+    if (maxRiskScore !== undefined)
+      riskFilter.riskScore = { ...((riskFilter.riskScore as object) || {}), lte: maxRiskScore };
+
+    if (Object.keys(riskFilter).length > 0) {
+      where.analysis = riskFilter as Prisma.TokenAnalysisWhereInput;
+    }
+
+    const total = await this.prisma.token.count({ where });
+
+    const orderBy = buildOrderBy(sort);
+
+    const analysisInclude = {
+      analysis: {
+        select: { riskScore: true, riskLevel: true },
+      },
+    };
+
+    const findArgs: Prisma.TokenFindManyArgs = {
+      where,
+      orderBy,
+      take: limit + 1,
+      include: analysisInclude,
+    };
+
+    if (cursor) {
+      findArgs.cursor = { id: cursor };
+      findArgs.skip = 1;
+    }
+
+    const items = (await this.prisma.token.findMany(findArgs)) as TokenWithAnalysis[];
+
+    const hasMore = items.length > limit;
+    if (hasMore) items.pop();
+
+    const nextCursor = hasMore ? items[items.length - 1].id : null;
+
+    return { items, nextCursor, total };
+  }
+
+  async getTokensByDeployer(deployer: string, chain?: ChainName): Promise<Token[]> {
+    const where: Prisma.TokenWhereInput = {
+      deployer: deployer.toLowerCase(),
+    };
+    if (chain) where.chain = chain;
 
     return this.prisma.token.findMany({
       where,
       orderBy: { discoveredAt: 'desc' },
-      take: limit,
-      skip: offset,
     });
+  }
+
+  async getDeployerSummary(
+    deployer: string,
+    chain?: ChainName,
+  ): Promise<{
+    totalContracts: number;
+    chains: string[];
+    firstDeployment: Date | null;
+    latestDeployment: Date | null;
+  }> {
+    const where: Prisma.TokenWhereInput = {
+      deployer: deployer.toLowerCase(),
+    };
+    if (chain) where.chain = chain;
+
+    const [totalContracts, tokens] = await Promise.all([
+      this.prisma.token.count({ where }),
+      this.prisma.token.findMany({
+        where,
+        orderBy: { discoveredAt: 'asc' },
+        select: { chain: true, discoveredAt: true },
+      }),
+    ]);
+
+    const chains = [...new Set(tokens.map((t) => t.chain))];
+    const firstDeployment = tokens.length > 0 ? tokens[0].discoveredAt : null;
+    const latestDeployment = tokens.length > 0 ? tokens[tokens.length - 1].discoveredAt : null;
+
+    return { totalContracts, chains, firstDeployment, latestDeployment };
   }
 
   async saveLastProcessedBlock(chain: ChainName, blockNumber: bigint): Promise<void> {
@@ -138,5 +295,26 @@ export class TokenRepository {
   async getLatestCursors(): Promise<{ chain: string; blockNumber: bigint }[]> {
     const cursors = await this.prisma.syncCursor.findMany();
     return cursors.map((c) => ({ chain: c.chain, blockNumber: c.blockNumber }));
+  }
+}
+
+function buildOrderBy(
+  sort: Required<SearchTokensOptions>['sort'],
+): Prisma.TokenOrderByWithRelationInput | Prisma.TokenOrderByWithRelationInput[] {
+  switch (sort) {
+    case 'newest':
+      return { discoveredAt: 'desc' };
+    case 'oldest':
+      return { discoveredAt: 'asc' };
+    case 'highest_risk':
+      return { analysis: { riskScore: 'desc' } };
+    case 'lowest_risk':
+      return { analysis: { riskScore: 'asc' } };
+    case 'name_asc':
+      return { name: 'asc' };
+    case 'name_desc':
+      return { name: 'desc' };
+    default:
+      return { discoveredAt: 'desc' };
   }
 }

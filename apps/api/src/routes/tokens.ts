@@ -1,17 +1,35 @@
 import { Router, type Router as RouterType } from 'express';
 import { z } from 'zod';
 import { prisma, TokenRepository } from '@token-intelligence-ai/database';
-import type { Token } from '@token-intelligence-ai/database';
+import type { TokenWithAnalysis, SearchTokensOptions } from '@token-intelligence-ai/database';
 import type { ChainName } from '@token-intelligence-ai/blockchain';
+
 const tokenRepo = new TokenRepository(prisma);
 const router: RouterType = Router();
 
 const chainEnum = z.enum(['base', 'robinhood', 'ethereum', 'polygon']);
+const sortEnum = z.enum([
+  'newest',
+  'oldest',
+  'highest_risk',
+  'lowest_risk',
+  'name_asc',
+  'name_desc',
+]);
 
 const listQuerySchema = z.object({
   page: z.coerce.number().int().positive().default(1),
   limit: z.coerce.number().int().min(1).max(100).default(20),
   chain: chainEnum.optional(),
+  q: z.string().optional(),
+  risk: z.string().optional(),
+  minScore: z.coerce.number().int().min(0).max(100).optional(),
+  maxScore: z.coerce.number().int().min(0).max(100).optional(),
+  deployer: z.string().optional(),
+  sort: sortEnum.optional(),
+  cursor: z.string().optional(),
+  from: z.string().optional(),
+  to: z.string().optional(),
 });
 
 const addressParamSchema = z.object({
@@ -19,8 +37,6 @@ const addressParamSchema = z.object({
 });
 
 const addressSchema = z.string().regex(/^0x[a-fA-F0-9]{40}$/, 'Invalid contract address format');
-
-type TokenWithAnalysis = Token & { analysis?: { riskScore: number; riskLevel: string } | null };
 
 function formatToken(token: TokenWithAnalysis) {
   return {
@@ -40,31 +56,55 @@ function formatToken(token: TokenWithAnalysis) {
   };
 }
 
-const includeAnalysis = {
-  analysis: {
-    select: { riskScore: true, riskLevel: true },
-  },
-};
-
 router.get('/', async (req, res, next) => {
   try {
     const query = listQuerySchema.parse(req.query);
-    const offset = (query.page - 1) * query.limit;
+
+    if (
+      query.q ||
+      query.risk ||
+      query.minScore !== undefined ||
+      query.maxScore !== undefined ||
+      query.deployer ||
+      query.sort ||
+      query.cursor ||
+      query.from ||
+      query.to
+    ) {
+      const opts: SearchTokensOptions = {};
+      if (query.q) opts.query = query.q;
+      if (query.chain) opts.chain = query.chain as ChainName;
+      if (query.risk) opts.riskLevel = query.risk;
+      if (query.minScore !== undefined) opts.minRiskScore = query.minScore;
+      if (query.maxScore !== undefined) opts.maxRiskScore = query.maxScore;
+      if (query.deployer) opts.deployer = query.deployer;
+      if (query.sort) opts.sort = query.sort;
+      if (query.cursor) opts.cursor = query.cursor;
+      opts.limit = query.limit;
+      if (query.from) opts.fromDate = new Date(query.from);
+      if (query.to) opts.toDate = new Date(query.to);
+
+      const result = await tokenRepo.searchTokens(opts);
+
+      res.json({
+        data: result.items.map(formatToken),
+        nextCursor: result.nextCursor,
+        total: result.total,
+      });
+      return;
+    }
+
+    const cursor = query.cursor || undefined;
 
     const tokens = await tokenRepo.listTokens({
       chain: query.chain as ChainName | undefined,
       limit: query.limit,
-      offset,
-    });
-
-    const enriched = await prisma.token.findMany({
-      where: { id: { in: tokens.map((t) => t.id) } },
-      orderBy: { discoveredAt: 'desc' },
-      include: includeAnalysis,
+      cursor,
     });
 
     res.json({
-      data: enriched.map(formatToken),
+      data: tokens.map(formatToken),
+      nextCursor: null,
       pagination: { page: query.page, limit: query.limit },
     });
   } catch (error) {
@@ -84,7 +124,9 @@ router.get('/:address', async (req, res, next) => {
           contractAddress: contractAddress.toLowerCase(),
         },
       },
-      include: includeAnalysis,
+      include: {
+        analysis: { select: { riskScore: true, riskLevel: true } },
+      },
     });
 
     if (!token) {

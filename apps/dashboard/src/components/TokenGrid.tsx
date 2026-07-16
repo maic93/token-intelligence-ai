@@ -1,66 +1,27 @@
-import { useState, useMemo } from 'react';
-import type { TokenData } from '../types';
+import { useCallback } from 'react';
 import { useTokens } from '../hooks/useTokens';
 import { TokenCard } from './TokenCard';
 import { LoadingSkeleton } from './LoadingSkeleton';
 
-const PAGE_SIZE = 12;
-
 export function TokenGrid({
-  liveTokens,
   newKeys,
   onAnalytics,
 }: {
-  liveTokens: TokenData[];
   newKeys: Set<string>;
   onAnalytics?: (chain: string, address: string) => void;
 }) {
-  const {
-    loading,
-    error,
-    search,
-    setSearch,
-    chain,
-    setChain,
-    filteredTokens,
-    hasMore,
-    page,
-    setPage,
-  } = useTokens();
+  const { tokens, loading, error, total, hasMore, filters, updateFilter, loadMore, clearFilters } =
+    useTokens();
 
-  const [clientPage, setClientPage] = useState(0);
+  const handleInputChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+      const key = e.target.dataset.filter as 'q' | 'chain' | 'risk' | 'sort' | 'deployer';
+      if (key) updateFilter(key, e.target.value);
+    },
+    [updateFilter],
+  );
 
-  const merged = useMemo(() => {
-    const seen = new Set<string>();
-    const list: TokenData[] = [];
-    for (const t of [...liveTokens, ...filteredTokens]) {
-      const key = `${t.chain}:${t.contractAddress}`;
-      if (!seen.has(key)) {
-        seen.add(key);
-        list.push(t);
-      }
-    }
-    return list;
-  }, [liveTokens, filteredTokens]);
-
-  const paginated = merged.slice(0, (clientPage + 1) * PAGE_SIZE);
-
-  function handleSearch(val: string) {
-    setSearch(val);
-    setClientPage(0);
-  }
-
-  function handleChain(val: string) {
-    setChain(val || undefined);
-    setClientPage(0);
-  }
-
-  function handleLoadMore() {
-    if (clientPage * PAGE_SIZE + PAGE_SIZE >= filteredTokens.length && hasMore) {
-      setPage(page + 1);
-    }
-    setClientPage((p) => p + 1);
-  }
+  const hasActiveFilters = Object.values(filters).some((v) => v !== '');
 
   return (
     <section className="token-grid-section">
@@ -68,14 +29,16 @@ export function TokenGrid({
         <input
           className="search-input"
           type="text"
-          placeholder="Search by name, symbol, or address..."
-          value={search}
-          onChange={(e) => handleSearch(e.target.value)}
+          placeholder="Search by name, symbol, address, deployer..."
+          value={filters.q}
+          data-filter="q"
+          onChange={handleInputChange}
         />
         <select
           className="chain-select"
-          value={chain ?? ''}
-          onChange={(e) => handleChain(e.target.value)}
+          value={filters.chain}
+          data-filter="chain"
+          onChange={handleInputChange}
         >
           <option value="">All Chains</option>
           <option value="base">Base</option>
@@ -83,18 +46,57 @@ export function TokenGrid({
           <option value="polygon">Polygon</option>
           <option value="robinhood">Robinhood</option>
         </select>
+        <select
+          className="chain-select"
+          value={filters.risk}
+          data-filter="risk"
+          onChange={handleInputChange}
+        >
+          <option value="">All Risk</option>
+          <option value="very_safe">Very Safe</option>
+          <option value="low">Low Risk</option>
+          <option value="medium">Medium Risk</option>
+          <option value="high">High Risk</option>
+          <option value="critical">Critical</option>
+        </select>
+        <select
+          className="chain-select"
+          value={filters.sort}
+          data-filter="sort"
+          onChange={handleInputChange}
+        >
+          <option value="">Newest</option>
+          <option value="oldest">Oldest</option>
+          <option value="highest_risk">Highest Risk</option>
+          <option value="lowest_risk">Lowest Risk</option>
+          <option value="name_asc">Name A-Z</option>
+          <option value="name_desc">Name Z-A</option>
+        </select>
+        {hasActiveFilters && (
+          <button className="btn btn-sm" onClick={clearFilters} type="button">
+            Clear
+          </button>
+        )}
       </div>
+
+      {total > 0 && (
+        <div className="token-grid-info">
+          {total} token{total !== 1 ? 's' : ''} found
+        </div>
+      )}
 
       {error && <div className="error-banner">{error}</div>}
 
-      {loading && merged.length === 0 ? (
+      {loading && tokens.length === 0 ? (
         <LoadingSkeleton count={6} />
-      ) : paginated.length === 0 ? (
-        <div className="empty-state">No tokens found</div>
+      ) : tokens.length === 0 ? (
+        <div className="empty-state">
+          {filters.q ? 'No tokens match your search' : 'No tokens found'}
+        </div>
       ) : (
         <>
           <div className="token-grid">
-            {paginated.map((t) => (
+            {tokens.map((t) => (
               <TokenCard
                 key={`${t.chain}:${t.contractAddress}`}
                 token={t}
@@ -103,9 +105,14 @@ export function TokenGrid({
               />
             ))}
           </div>
-          {paginated.length < merged.length && (
-            <button className="btn btn-load-more" onClick={handleLoadMore} type="button">
-              Load More
+          {hasMore && (
+            <button
+              className="btn btn-load-more"
+              onClick={loadMore}
+              type="button"
+              disabled={loading}
+            >
+              {loading ? 'Loading...' : 'Load More'}
             </button>
           )}
         </>
