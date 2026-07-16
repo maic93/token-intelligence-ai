@@ -31,9 +31,13 @@ const LEVEL_PAD: Record<LogLevel, string> = {
   error: 'ERROR',
 };
 
-export function createLogger(service: string, opts?: { level?: LogLevel }): Logger {
+export function createLogger(
+  service: string,
+  opts?: { level?: LogLevel; requestId?: string },
+): Logger {
   const minLevel = opts?.level ?? (process.env.LOG_LEVEL as LogLevel | undefined) ?? 'info';
   const minRank = LEVEL_RANK[minLevel] ?? 1;
+  const parentRequestId = opts?.requestId;
 
   function shouldLog(level: LogLevel): boolean {
     return LEVEL_RANK[level] >= minRank;
@@ -49,6 +53,10 @@ export function createLogger(service: string, opts?: { level?: LogLevel }): Logg
       timestamp: formatTimestamp(),
       ...data,
     };
+
+    if (parentRequestId && !entry.requestId) {
+      entry.requestId = parentRequestId;
+    }
 
     if (isPretty()) {
       const ts = entry.timestamp as string;
@@ -85,6 +93,7 @@ export function createLogger(service: string, opts?: { level?: LogLevel }): Logg
   function child(overrides: Partial<LoggerOptions>): Logger {
     return createLogger(overrides.service ?? service, {
       level: overrides.level ?? minLevel,
+      requestId: overrides.requestId ?? parentRequestId,
     });
   }
 

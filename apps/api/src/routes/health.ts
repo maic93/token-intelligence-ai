@@ -8,7 +8,7 @@ const pkgVersion = process.env.npm_package_version ?? '0.1.0';
 const router: RouterType = Router();
 
 interface HealthStatus {
-  status: 'healthy' | 'degraded' | 'unhealthy';
+  status: 'ok' | 'degraded' | 'unhealthy';
   service: string;
   version: string;
   uptime: number;
@@ -20,7 +20,7 @@ interface HealthStatus {
 
 router.get('/', async (_req, res) => {
   const status: HealthStatus = {
-    status: 'healthy',
+    status: 'ok',
     service: 'api',
     version: pkgVersion,
     uptime: Math.floor((Date.now() - startTimestamp) / 1000),
@@ -57,7 +57,7 @@ router.get('/', async (_req, res) => {
     }
   }
 
-  const httpCode = status.status === 'healthy' ? 200 : 503;
+  const httpCode = status.status === 'ok' ? 200 : 503;
   res.status(httpCode).json(status);
 });
 

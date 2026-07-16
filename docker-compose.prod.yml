@@ -1,0 +1,73 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-token_intelligence}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    ports:
+      - '${POSTGRES_PORT:-5432}:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-postgres}']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - '${REDIS_PORT:-6379}:6379'
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  indexer:
+    build:
+      context: .
+      target: runner
+    environment:
+      NODE_ENV: production
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      DATABASE_URL: ${DATABASE_URL}
+      BASE_RPC_URL: ${BASE_RPC_URL}
+      ETHEREUM_RPC_URL: ${ETHEREUM_RPC_URL}
+      POLYGON_RPC_URL: ${POLYGON_RPC_URL}
+      ROBINHOOD_RPC_URL: ${ROBINHOOD_RPC_URL:-}
+      START_BLOCK: ${START_BLOCK:-0}
+      BACKFILL_BLOCKS: ${BACKFILL_BLOCKS:-0}
+      POLL_INTERVAL_MS: ${POLL_INTERVAL_MS:-12000}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  api:
+    build:
+      context: .
+      target: runner-api
+    ports:
+      - '${API_PORT:-4000}:4000'
+    environment:
+      NODE_ENV: production
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      PORT: '4000'
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: redis://redis:6379
+      CORS_ORIGIN: ${CORS_ORIGIN:-*}
+      RATE_LIMIT_WINDOW_MS: ${RATE_LIMIT_WINDOW_MS:-60000}
+      RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-100}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
