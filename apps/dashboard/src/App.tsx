@@ -3,6 +3,8 @@ import type { TokenData } from './types';
 import { useWebSocket } from './hooks/useWebSocket';
 import { Header } from './components/Header';
 import { StatsSection } from './components/StatsSection';
+import { AnalyticsCards } from './components/AnalyticsCards';
+import { ChartsSection } from './components/ChartsSection';
 import { TokenGrid } from './components/TokenGrid';
 import { ChainPanel } from './components/ChainPanel';
 import { ConnectionBanner } from './components/ConnectionBanner';
@@ -21,7 +23,6 @@ function parseHash(): { view: 'main' } | { view: 'analytics'; chain: string; add
 
 export default function App() {
   const [route, setRoute] = useState(parseHash);
-  const [liveTokens, setLiveTokens] = useState<TokenData[]>([]);
   const [newKeys, setNewKeys] = useState<Set<string>>(new Set());
   const newTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
@@ -37,8 +38,6 @@ export default function App() {
 
   const handleTokenDiscovery = useCallback((token: TokenData) => {
     const key = `${token.chain}:${token.contractAddress}`;
-    setLiveTokens((prev) => [token, ...prev].slice(0, 100));
-
     setNewKeys((prev) => new Set(prev).add(key));
     const existing = newTimersRef.current.get(key);
     if (existing) clearTimeout(existing);
@@ -82,8 +81,10 @@ export default function App() {
       {!isConnected() && <ConnectionBanner />}
       <main className="main-content">
         <div className="main-left">
+          <AnalyticsCards />
+          <ChartsSection />
           <StatsSection />
-          <TokenGrid liveTokens={liveTokens} newKeys={newKeys} onAnalytics={navigateToAnalytics} />
+          <TokenGrid newKeys={newKeys} onAnalytics={navigateToAnalytics} />
         </div>
         <aside className="main-right">
           <ChainPanel />

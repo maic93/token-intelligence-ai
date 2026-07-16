@@ -1,9 +1,12 @@
 import type {
   RiskAnalysis,
   TokenListResponse,
+  TokenSearchResponse,
   StatsResponse,
   ChainsResponse,
   AnalyticsResponse,
+  PlatformAnalyticsResponse,
+  DeployerResponse,
 } from './types';
 
 const API_BASE = '/api';
@@ -21,14 +24,35 @@ export function fetchTokens(
     page?: number;
     limit?: number;
     chain?: string;
+    q?: string;
+    risk?: string;
+    minScore?: number;
+    maxScore?: number;
+    deployer?: string;
+    sort?: string;
+    cursor?: string;
+    from?: string;
+    to?: string;
   },
   signal?: AbortSignal,
-): Promise<TokenListResponse> {
+): Promise<TokenListResponse | TokenSearchResponse> {
   const search = new URLSearchParams();
   if (params.page) search.set('page', String(params.page));
   if (params.limit) search.set('limit', String(params.limit));
   if (params.chain) search.set('chain', params.chain);
-  return fetchJson<TokenListResponse>(`${API_BASE}/tokens?${search.toString()}`, signal);
+  if (params.q) search.set('q', params.q);
+  if (params.risk) search.set('risk', params.risk);
+  if (params.minScore !== undefined) search.set('minScore', String(params.minScore));
+  if (params.maxScore !== undefined) search.set('maxScore', String(params.maxScore));
+  if (params.deployer) search.set('deployer', params.deployer);
+  if (params.sort) search.set('sort', params.sort);
+  if (params.cursor) search.set('cursor', params.cursor);
+  if (params.from) search.set('from', params.from);
+  if (params.to) search.set('to', params.to);
+  return fetchJson<TokenListResponse | TokenSearchResponse>(
+    `${API_BASE}/tokens?${search.toString()}`,
+    signal,
+  );
 }
 
 export function fetchToken(
@@ -45,6 +69,22 @@ export function fetchStats(signal?: AbortSignal): Promise<StatsResponse> {
 
 export function fetchChains(signal?: AbortSignal): Promise<ChainsResponse> {
   return fetchJson<ChainsResponse>(`${API_BASE}/chains`, signal);
+}
+
+export function fetchPlatformAnalytics(signal?: AbortSignal): Promise<PlatformAnalyticsResponse> {
+  return fetchJson<PlatformAnalyticsResponse>(`${API_BASE}/platform-analytics`, signal);
+}
+
+export function fetchDeployer(
+  address: string,
+  chain?: string,
+  signal?: AbortSignal,
+): Promise<DeployerResponse> {
+  const search = chain ? `?chain=${encodeURIComponent(chain)}` : '';
+  return fetchJson<DeployerResponse>(
+    `${API_BASE}/deployers/${encodeURIComponent(address)}${search}`,
+    signal,
+  );
 }
 
 export function fetchAnalytics(

@@ -33,6 +33,8 @@ Token Intelligence AI is an open-source platform that continuously indexes suppo
 - **Prometheus Metrics** — HTTP request count/duration, indexed tokens, WS clients
 - **Security Hardening** — Helmet, rate limiting, CORS, trusted proxy, request IDs
 - **TypeScript Strict Mode** — Full-stack type safety across monorepo
+- **Advanced Search** — Partial text search across name/symbol/address/deployer with chain, risk, score, date filters, cursor-based pagination, 6 sort modes
+- **Platform Analytics** — Aggregated stats, per-chain breakdown, risk distribution, top deployers, auto-refreshing dashboard cards and charts
 
 ---
 
@@ -394,9 +396,102 @@ Returns the token risk analysis for a given contract address. Requires `?chain=`
 }
 ```
 
+### `GET /api/tokens` (Extended)
+
+All existing params plus the following search/filter/sort/cursor params:
+
+| Param      | Type   | Default  | Description                                                                            |
+| ---------- | ------ | -------- | -------------------------------------------------------------------------------------- |
+| `q`        | string | —        | Search query (matches name, symbol, contract address, deployer)                        |
+| `risk`     | enum   | —        | Filter by risk level: `very_safe`, `low`, `medium`, `high`, `critical`                 |
+| `minScore` | number | —        | Minimum risk score (0–100)                                                             |
+| `maxScore` | number | —        | Maximum risk score (0–100)                                                             |
+| `deployer` | string | —        | Filter by deployer address (0x-prefixed)                                               |
+| `sort`     | enum   | `newest` | Sort order: `newest`, `oldest`, `highest_risk`, `lowest_risk`, `name_asc`, `name_desc` |
+| `cursor`   | string | —        | Cursor for pagination (from previous response)                                         |
+| `from`     | string | —        | ISO 8601 date lower bound                                                              |
+| `to`       | string | —        | ISO 8601 date upper bound                                                              |
+
+**Response:**
+
+```json
+{
+  "data": [
+    {
+      "contractAddress": "0x...",
+      "chain": "base",
+      "riskScore": 85,
+      "riskLevel": "low",
+      "...": "..."
+    }
+  ],
+  "nextCursor": "abc123...",
+  "total": 1542
+}
+```
+
+### `GET /api/search`
+
+General search endpoint — queries across name, symbol, contract address, and deployer with partial matching.
+
+| Param    | Type   | Default | Description             |
+| -------- | ------ | ------- | ----------------------- |
+| `q`      | string | —       | Search query (required) |
+| `chain`  | enum   | —       | Filter by chain         |
+| `limit`  | int    | `20`    | Max results (max 100)   |
+| `cursor` | string | —       | Cursor for pagination   |
+
+### `GET /api/platform-analytics`
+
+Aggregated platform statistics, automatically recalculated and cached.
+
+| Field              | Type           | Description                          |
+| ------------------ | -------------- | ------------------------------------ |
+| `totalTokens`      | number         | Total discovered tokens              |
+| `tokensToday`      | number         | Tokens discovered in last 24 hours   |
+| `tokensThisWeek`   | number         | Tokens discovered in last 7 days     |
+| `tokensThisMonth`  | number         | Tokens discovered in last 30 days    |
+| `averageRiskScore` | number \| null | Average risk score across all tokens |
+| `riskDistribution` | object         | Count per risk level                 |
+| `tokensPerChain`   | array          | Token count per chain                |
+| `topDeployers`     | array          | Deployers ranked by token count      |
+| `latestTokens`     | array          | Most recently discovered tokens      |
+
+### `GET /api/deployers/:address`
+
+Returns deployer metadata and paginated token list.
+
+| Param   | Type | Description     |
+| ------- | ---- | --------------- |
+| `chain` | enum | Filter by chain |
+
+**Response:**
+
+```json
+{
+  "data": {
+    "deployer": "0x...",
+    "totalContracts": 42,
+    "chains": ["base", "ethereum"],
+    "firstDeployment": "2026-01-01T00:00:00.000Z",
+    "latestDeployment": "2026-07-16T12:00:00.000Z",
+    "averageRiskScore": 45,
+    "tokens": [
+      {
+        "contractAddress": "0x...",
+        "chain": "base",
+        "riskScore": 85,
+        "riskLevel": "low",
+        "...": "..."
+      }
+    ]
+  }
+}
+```
+
 ### Token List & Detail
 
-The `GET /api/tokens` and `GET /api/tokens/:address` endpoints now include two additional fields:
+The `GET /api/tokens` and `GET /api/tokens/:address` endpoints include:
 
 | Field       | Type             | Description                                                   |
 | ----------- | ---------------- | ------------------------------------------------------------- |
@@ -497,8 +592,10 @@ Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduc
 ### Current
 
 - [x] Token risk scoring engine (deterministic, 0–100, 7 rules, explainable)
+- [x] Advanced search & filtering (query, chain, risk level, score range, deployer, date range, sort, cursor pagination)
+- [x] Platform analytics dashboard (aggregated stats, per-chain breakdown, risk distribution, top deployers)
+- [x] Deployer profile page (deployer metadata + token list with chain filter)
 - [ ] AI-powered anomaly detection
-- [ ] Token search and discovery
 - [ ] Real-time alerts and notifications
 - [ ] Portfolio tracking
 - [ ] Authentication and API keys
