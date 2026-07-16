@@ -24,7 +24,6 @@ COPY apps/ apps/
 COPY packages/ packages/
 RUN rm -rf apps/*/node_modules packages/*/node_modules 2>/dev/null; pnpm install --frozen-lockfile
 RUN pnpm build
-RUN rm -rf apps/*/node_modules packages/*/node_modules
 
 # ---- runner-indexer: default target ----
 FROM node:22-alpine AS runner
