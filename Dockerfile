@@ -11,6 +11,7 @@ COPY apps/dashboard/package.json apps/dashboard/
 COPY packages/ai/package.json packages/ai/
 COPY packages/analytics/package.json packages/analytics/
 COPY packages/blockchain/package.json packages/blockchain/
+COPY packages/config/package.json packages/config/
 COPY packages/database/package.json packages/database/
 COPY packages/database/prisma/schema.prisma packages/database/prisma/schema.prisma
 COPY packages/shared/package.json packages/shared/
@@ -31,13 +32,18 @@ COPY --from=build /app .
 COPY apps/indexer/bin/start.sh ./bin/start.sh
 RUN chmod +x /app/bin/start.sh
 ENV NODE_ENV=production
+HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
+  CMD ps aux | grep -v grep | grep -q "node" || exit 1
 CMD ["/app/bin/start.sh"]
 
 # ---- runner-api: API service target ----
 FROM base AS runner-api
 WORKDIR /app
+RUN apk add --no-cache curl
 COPY --from=build /app .
 COPY apps/api/bin/start.sh ./bin/start.sh
 RUN chmod +x /app/bin/start.sh
 ENV NODE_ENV=production
+HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
+  CMD curl -f http://localhost:4000/health || exit 1
 CMD ["/app/bin/start.sh"]

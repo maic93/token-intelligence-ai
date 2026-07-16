@@ -1,10 +1,4 @@
-import { z } from 'zod';
+import { loadApiConfig } from '@token-intelligence-ai/config';
+import type { ApiEnv } from '@token-intelligence-ai/config';
 
-const envSchema = z.object({
-  NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
-  PORT: z.coerce.number().int().positive().default(4000),
-  DATABASE_URL: z.string().min(1),
-});
-
-export const config = envSchema.parse(process.env);
-export type Config = z.infer<typeof envSchema>;
+export const config: ApiEnv = loadApiConfig(process.env);
