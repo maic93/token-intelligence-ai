@@ -80,6 +80,11 @@ export interface WebSocketMessage {
   data: TokenData;
 }
 
+export interface AlertWebSocketMessage {
+  type: 'WATCH_EVENT';
+  event: WatchEvent;
+}
+
 export type ChainName = 'base' | 'robinhood' | 'ethereum' | 'polygon';
 
 export function isChainName(value: string): value is ChainName {
@@ -201,4 +206,37 @@ export interface AnalyticsReport {
 
 export interface AnalyticsResponse {
   data: AnalyticsReport;
+}
+
+export interface WatchEvent {
+  id: string;
+  tokenId: string;
+  eventType: string;
+  message: string;
+  metadata: Record<string, unknown>;
+  createdAt: string;
+  token: {
+    chain: string;
+    contractAddress: string;
+    name: string;
+    symbol: string;
+  } | null;
+}
+
+export interface AlertMessage {
+  type: 'WATCH_EVENT';
+  event: WatchEvent;
+}
+
+export interface AlertItem {
+  id: string;
+  message: string;
+  eventType: string;
+  tokenName: string;
+  tokenSymbol: string;
+  chain: string;
+  riskScore?: number;
+  riskLevel?: string;
+  createdAt: string;
+  seen: boolean;
 }

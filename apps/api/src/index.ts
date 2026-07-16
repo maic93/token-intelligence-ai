@@ -18,6 +18,7 @@ import { analyticsRouter, initAnalytics } from './routes/analytics.js';
 import { deployersRouter } from './routes/deployers.js';
 import { platformAnalyticsRouter } from './routes/platform-analytics.js';
 import { searchRouter } from './routes/search.js';
+import { watchRouter } from './routes/watch.js';
 import { errorHandler } from './middleware/error-handler.js';
 import { requestLogger } from './middleware/request-logger.js';
 import { requestIdMiddleware } from './middleware/request-id.js';
@@ -68,6 +69,7 @@ app.use('/api/search', searchRouter);
 app.use('/api/platform-analytics', platformAnalyticsRouter);
 app.use('/api/deployers', deployersRouter);
 app.use('/api/analytics', analyticsRouter);
+app.use('/api/watch', watchRouter);
 
 if (config.NODE_ENV === 'production') {
   const dashboardPath = path.resolve(import.meta.dirname, '../../dashboard/dist');
@@ -82,17 +84,49 @@ app.use(errorHandler(log));
 let redisClient: import('redis').RedisClientType | null = null;
 let wsServer: import('ws').WebSocketServer | null = null;
 let server: ReturnType<typeof app.listen> | null = null;
+let watchSubscriber: import('redis').RedisClientType | null = null;
 
 export function setRedisClient(client: typeof redisClient): void {
   redisClient = client;
+  void startWatchSubscriber();
 }
 
 export function setWsServer(wss: typeof wsServer): void {
   wsServer = wss;
 }
 
+async function startWatchSubscriber(): Promise<void> {
+  if (!redisClient) return;
+  try {
+    watchSubscriber = redisClient.duplicate();
+    await watchSubscriber.connect();
+    await watchSubscriber.subscribe('watch:events', (message) => {
+      if (!wsServer) return;
+      const payload = JSON.stringify({ type: 'WATCH_EVENT', event: JSON.parse(message) });
+      for (const client of wsServer.clients) {
+        if (client.readyState === 1) {
+          client.send(payload);
+        }
+      }
+    });
+    log.info('Watch event subscriber started');
+  } catch (error) {
+    log.error('Failed to start watch subscriber', { error: String(error) });
+  }
+}
+
 async function shutdown(signal: string): Promise<void> {
   log.info('Shutdown requested', { signal });
+
+  if (watchSubscriber) {
+    try {
+      await watchSubscriber.unsubscribe('watch:events');
+      await watchSubscriber.quit();
+    } catch {
+      watchSubscriber.disconnect();
+    }
+    log.info('Watch subscriber stopped');
+  }
 
   if (server) {
     await new Promise<void>((resolve) => server!.close(() => resolve()));

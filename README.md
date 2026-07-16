@@ -35,6 +35,7 @@ Token Intelligence AI is an open-source platform that continuously indexes suppo
 - **TypeScript Strict Mode** — Full-stack type safety across monorepo
 - **Advanced Search** — Partial text search across name/symbol/address/deployer with chain, risk, score, date filters, cursor-based pagination, 6 sort modes
 - **Platform Analytics** — Aggregated stats, per-chain breakdown, risk distribution, top deployers, auto-refreshing dashboard cards and charts
+- **Watchlists & Alerts** — Anonymous browser-based watchlists via localStorage, real-time WebSocket alerts for watched tokens, floating notifications with auto-dismiss queue, bell icon with unread counter and dropdown
 
 ---
 
@@ -507,9 +508,41 @@ Returns a complete analytics report for the specified token. Cached for 5 minute
 | `chain`   | string | Chain name (`base`, `ethereum`, etc.) |
 | `address` | string | Token contract address (0x-prefixed)  |
 
+### `GET /api/watch/events`
+
+Returns recent watch events (token discovery, risk changes, high-risk alerts) with cursor pagination.
+
+| Param    | Type   | Default | Description              |
+| -------- | ------ | ------- | ------------------------ |
+| `limit`  | int    | `50`    | Items per page (max 100) |
+| `cursor` | string | —       | Cursor for pagination    |
+
+```json
+{
+  "data": [
+    {
+      "id": "uuid",
+      "eventType": "NEW_TOKEN",
+      "message": "New token MyToken (MTK) discovered on Base",
+      "metadata": { "chain": "base", "contractAddress": "0x..." },
+      "createdAt": "2026-07-16T12:00:00.000Z",
+      "token": { "chain": "base", "contractAddress": "0x...", "name": "MyToken", "symbol": "MTK" }
+    }
+  ],
+  "nextCursor": "uuid...",
+  "total": 42
+}
+```
+
+### `GET /api/watch/:address`
+
+Returns watch events for a specific token contract address. Supports same `limit` and `cursor` params as `/api/watch/events`.
+
 ### WebSocket — `/ws`
 
-Connect to `/ws` for real-time token discovery events.
+Connect to `/ws` for real-time events. Two message formats:
+
+**Token discovery (backwards compatible):**
 
 ```json
 {
@@ -529,6 +562,29 @@ Connect to `/ws` for real-time token discovery events.
   }
 }
 ```
+
+**Watch events (new):**
+
+```json
+{
+  "type": "WATCH_EVENT",
+  "event": {
+    "id": "uuid",
+    "tokenId": "uuid",
+    "eventType": "HIGH_RISK",
+    "message": "MyToken (MTK) flagged as high risk (score: 75/100)",
+    "metadata": {
+      "chain": "base",
+      "contractAddress": "0x...",
+      "riskScore": 75,
+      "riskLevel": "high"
+    },
+    "createdAt": "2026-07-16T12:00:00.000Z"
+  }
+}
+```
+
+Event types: `NEW_TOKEN`, `RISK_CHANGED`, `HIGH_RISK`, `TOKEN_UPDATED`, `SYSTEM`.
 
 ---
 
@@ -596,7 +652,7 @@ Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduc
 - [x] Platform analytics dashboard (aggregated stats, per-chain breakdown, risk distribution, top deployers)
 - [x] Deployer profile page (deployer metadata + token list with chain filter)
 - [ ] AI-powered anomaly detection
-- [ ] Real-time alerts and notifications
+- [x] Real-time alerts and notifications (watchlists, WebSocket alerts, floating notifications, bell icon)
 - [ ] Portfolio tracking
 - [ ] Authentication and API keys
 - [ ] Historical price and liquidity charts

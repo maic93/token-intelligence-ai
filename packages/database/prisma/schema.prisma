@@ -22,6 +22,7 @@ model Token {
   blockTimestamp  DateTime
   transactionHash String
   analysis        TokenAnalysis?
+  watchEvents     WatchEvent[]
 
   @@unique([chain, contractAddress])
   @@index([chain])
@@ -49,6 +50,21 @@ model TokenAnalysis {
   @@index([riskLevel])
   @@index([riskLevel, riskScore])
   @@map("token_analyses")
+}
+
+model WatchEvent {
+  id        String   @id @default(uuid())
+  tokenId   String
+  token     Token    @relation(fields: [tokenId], references: [id], onDelete: Cascade)
+  eventType String
+  message   String
+  metadata  Json     @default("{}")
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([tokenId])
+  @@index([eventType])
+  @@map("watch_events")
 }
 
 model SyncCursor {
