@@ -122,6 +122,14 @@ export class RpcClient {
   async ethCall(to: string, data: string, options?: CallOptions): Promise<string> {
     return this.call<string>('eth_call', [{ to, data }, 'latest'], options);
   }
+
+  async getCode(address: string): Promise<string> {
+    return this.call<string>('eth_getCode', [address, 'latest']);
+  }
+
+  async getBalance(address: string): Promise<string> {
+    return this.call<string>('eth_getBalance', [address, 'latest']);
+  }
 }
 
 function sleep(ms: number): Promise<void> {

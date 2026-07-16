@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { TokenData } from '../types';
 import { explorerUrl, shortAddress, timeAgo } from '../utils';
 import { WatchButton } from './WatchButton';
+import { RiskDetailsModal } from './RiskDetailsModal';
 
 interface TokenCardProps {
   token: TokenData;
@@ -11,17 +12,26 @@ interface TokenCardProps {
   onToggleWatch?: () => void;
 }
 
+function scoreColor(score: number | null): string {
+  if (score === null) return 'var(--text-secondary)';
+  if (score <= 20) return 'var(--green)';
+  if (score <= 40) return '#4ade80';
+  if (score <= 60) return 'var(--orange)';
+  if (score <= 80) return '#f87171';
+  return 'var(--red)';
+}
+
 function riskBadgeClass(level: string | null): string {
   switch (level) {
-    case 'very_safe':
-      return 'risk-very-safe';
-    case 'low':
+    case 'SAFE':
+      return 'risk-safe';
+    case 'LOW':
       return 'risk-low';
-    case 'medium':
+    case 'MEDIUM':
       return 'risk-medium';
-    case 'high':
+    case 'HIGH':
       return 'risk-high';
-    case 'critical':
+    case 'CRITICAL':
       return 'risk-critical';
     default:
       return 'risk-unknown';
@@ -30,15 +40,15 @@ function riskBadgeClass(level: string | null): string {
 
 function riskLabel(level: string | null): string {
   switch (level) {
-    case 'very_safe':
-      return 'Very Safe';
-    case 'low':
+    case 'SAFE':
+      return 'Safe';
+    case 'LOW':
       return 'Low Risk';
-    case 'medium':
+    case 'MEDIUM':
       return 'Medium Risk';
-    case 'high':
+    case 'HIGH':
       return 'High Risk';
-    case 'critical':
+    case 'CRITICAL':
       return 'Critical';
     default:
       return '—';
@@ -47,6 +57,7 @@ function riskLabel(level: string | null): string {
 
 export function TokenCard({ token, isNew, onAnalytics, isWatched, onToggleWatch }: TokenCardProps) {
   const [copied, setCopied] = useState(false);
+  const [showRiskModal, setShowRiskModal] = useState(false);
 
   function handleCopy() {
     navigator.clipboard.writeText(token.contractAddress).then(() => {
@@ -73,6 +84,15 @@ export function TokenCard({ token, isNew, onAnalytics, isWatched, onToggleWatch 
           {token.chain}
         </span>
         <span className="token-symbol">{token.tokenSymbol}</span>
+        {token.riskScore !== null && token.riskScore !== undefined && (
+          <span
+            className="risk-score-badge"
+            style={{ color: scoreColor(token.riskScore) }}
+            title={`Risk Score: ${token.riskScore}/100`}
+          >
+            {token.riskScore}
+          </span>
+        )}
         {token.riskLevel && (
           <span
             className={`risk-badge ${riskBadgeClass(token.riskLevel)}`}
@@ -131,7 +151,13 @@ export function TokenCard({ token, isNew, onAnalytics, isWatched, onToggleWatch 
             Analytics
           </button>
         )}
+        {token.riskLevel && (
+          <button className="btn btn-risk" onClick={() => setShowRiskModal(true)} type="button">
+            Risk Details
+          </button>
+        )}
       </div>
+      {showRiskModal && <RiskDetailsModal token={token} onClose={() => setShowRiskModal(false)} />}
     </div>
   );
 }

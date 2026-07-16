@@ -1,1 +1,8 @@
-export type { RiskLevel, RiskFactor, RiskAnalysis } from '@token-intelligence-ai/shared';
+export type {
+  RiskLevel,
+  RiskFactor,
+  RiskAnalysis,
+  RpcProvider,
+  TokenSecurityMetrics,
+  TokenAnalysisData,
+} from '@token-intelligence-ai/shared';

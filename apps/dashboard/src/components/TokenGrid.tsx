@@ -57,11 +57,11 @@ export function TokenGrid({
           onChange={handleInputChange}
         >
           <option value="">All Risk</option>
-          <option value="very_safe">Very Safe</option>
-          <option value="low">Low Risk</option>
-          <option value="medium">Medium Risk</option>
-          <option value="high">High Risk</option>
-          <option value="critical">Critical</option>
+          <option value="SAFE">Safe</option>
+          <option value="LOW">Low Risk</option>
+          <option value="MEDIUM">Medium Risk</option>
+          <option value="HIGH">High Risk</option>
+          <option value="CRITICAL">Critical</option>
         </select>
         <select
           className="chain-select"

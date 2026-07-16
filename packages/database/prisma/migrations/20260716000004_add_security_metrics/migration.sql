@@ -1,0 +1,19 @@
+-- Add security metric fields to token_analyses table
+-- These fields store the detailed results from each detector in the intelligence engine
+
+ALTER TABLE "token_analyses"
+  ADD COLUMN IF NOT EXISTS "ownerRenounced"    BOOLEAN NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS "mintable"          BOOLEAN NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS "pausable"          BOOLEAN NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS "blacklistFunction" BOOLEAN NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS "proxyContract"     BOOLEAN NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS "verifiedSource"    BOOLEAN NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS "buyTax"            INTEGER NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS "sellTax"           INTEGER NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS "liquidityLocked"   BOOLEAN NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS "liquidityPercent"  INTEGER NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS "holderCount"       INTEGER NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS "top10HolderPercent" INTEGER NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS "top1HolderPercent"  INTEGER NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS "createdAt"         TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  ADD COLUMN IF NOT EXISTS "updatedAt"         TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;

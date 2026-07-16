@@ -12,6 +12,19 @@ export interface TokenData {
   transactionHash: string;
   riskScore: number | null;
   riskLevel: string | null;
+  ownerRenounced?: boolean;
+  mintable?: boolean;
+  pausable?: boolean;
+  blacklistFunction?: boolean;
+  proxyContract?: boolean;
+  verifiedSource?: boolean;
+  buyTax?: number;
+  sellTax?: number;
+  liquidityLocked?: boolean;
+  liquidityPercent?: number;
+  holderCount?: number;
+  top10HolderPercent?: number;
+  top1HolderPercent?: number;
 }
 
 export interface RiskFactor {
@@ -27,6 +40,19 @@ export interface RiskAnalysis {
   explanation: string;
   factors: RiskFactor[];
   analyzedAt: string;
+  ownerRenounced?: boolean;
+  mintable?: boolean;
+  pausable?: boolean;
+  blacklistFunction?: boolean;
+  proxyContract?: boolean;
+  verifiedSource?: boolean;
+  buyTax?: number;
+  sellTax?: number;
+  liquidityLocked?: boolean;
+  liquidityPercent?: number;
+  holderCount?: number;
+  top10HolderPercent?: number;
+  top1HolderPercent?: number;
 }
 
 export interface TokenListResponse {

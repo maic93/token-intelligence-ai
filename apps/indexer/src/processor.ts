@@ -92,6 +92,11 @@ export class BlockProcessor {
     try {
       const result = await analyze(token, {
         currentBlockNumber: blockNumber,
+        rpc: {
+          ethCall: (to: string, data: string) => this.rpc.ethCall(to, data),
+          getCode: (address: string) => this.rpc.getCode(address),
+          getBalance: (address: string) => this.rpc.getBalance(address),
+        },
         getDeployerCount: (deployer: string, chain: string) =>
           this.analysisRepo.getDeployerTokenCount(deployer, chain),
       });
@@ -102,7 +107,7 @@ export class BlockProcessor {
         riskLevel: result.riskLevel,
       });
 
-      if (result.riskLevel === 'high' || result.riskLevel === 'critical') {
+      if (result.riskLevel === 'HIGH' || result.riskLevel === 'CRITICAL') {
         await publishWatchEvent(
           token.id,
           'HIGH_RISK',

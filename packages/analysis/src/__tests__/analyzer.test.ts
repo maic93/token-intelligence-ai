@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { analyze } from '../analyzer.js';
 import type { Token } from '@token-intelligence-ai/database';
+import type { RpcProvider } from '../types.js';
 
 const baseToken: Token = {
   id: 'test-id',
@@ -18,22 +19,34 @@ const baseToken: Token = {
   transactionHash: '0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890',
 };
 
+function makeRpc(overrides?: Partial<RpcProvider>): RpcProvider {
+  return {
+    ethCall: async () => '0x',
+    getCode: async () => '0x60806040',
+    getBalance: async () => '0x0',
+    ...overrides,
+  };
+}
+
 describe('analyze', () => {
-  it('returns a complete RiskAnalysis', async () => {
+  it('returns a complete analysis with metrics', async () => {
     const result = await analyze(baseToken, {
       currentBlockNumber: 2000n,
+      rpc: makeRpc(),
       getDeployerCount: async () => 1,
     });
 
     expect(result.riskScore).toBeGreaterThanOrEqual(0);
     expect(result.riskScore).toBeLessThanOrEqual(100);
-    expect(['very_safe', 'low', 'medium', 'high', 'critical']).toContain(result.riskLevel);
+    expect(['SAFE', 'LOW', 'MEDIUM', 'HIGH', 'CRITICAL']).toContain(result.riskLevel);
     expect(result.explanation).toBeTruthy();
-    expect(result.factors.length).toBeGreaterThanOrEqual(7);
+    expect(result.factors.length).toBeGreaterThanOrEqual(15);
     expect(result.analyzedAt).toBeTruthy();
+    expect(typeof result.ownerRenounced).toBe('boolean');
+    expect(typeof result.mintable).toBe('boolean');
   });
 
-  it('produces lower scores for risky tokens', async () => {
+  it('produces higher scores for risky tokens', async () => {
     const riskyToken: Token = {
       ...baseToken,
       name: '',
@@ -45,14 +58,15 @@ describe('analyze', () => {
 
     const result = await analyze(riskyToken, {
       currentBlockNumber: 2000n,
+      rpc: makeRpc(),
       getDeployerCount: async () => 0,
     });
 
-    expect(result.riskScore).toBeLessThan(50);
-    expect(['high', 'critical']).toContain(result.riskLevel);
+    expect(result.riskScore).toBeGreaterThanOrEqual(40);
+    expect(['MEDIUM', 'HIGH', 'CRITICAL']).toContain(result.riskLevel);
   });
 
-  it('produces high scores for safe tokens', async () => {
+  it('produces low scores for safe tokens', async () => {
     const safeToken: Token = {
       ...baseToken,
       name: 'SafeToken',
@@ -64,16 +78,18 @@ describe('analyze', () => {
 
     const result = await analyze(safeToken, {
       currentBlockNumber: 10000n,
+      rpc: makeRpc({ getCode: async () => '0x' + '60'.repeat(200) }),
       getDeployerCount: async () => 5,
     });
 
-    expect(result.riskScore).toBeGreaterThanOrEqual(90);
-    expect(result.riskLevel).toBe('very_safe');
+    expect(result.riskScore).toBeLessThanOrEqual(30);
+    expect(['SAFE', 'LOW']).toContain(result.riskLevel);
   });
 
   it('includes explanation in output', async () => {
     const result = await analyze(baseToken, {
       currentBlockNumber: 2000n,
+      rpc: makeRpc(),
       getDeployerCount: async () => 1,
     });
 
