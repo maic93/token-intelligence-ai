@@ -226,6 +226,71 @@ Chain configuration and status.
 └── pnpm-workspace.yaml
 ```
 
+## Analytics Engine
+
+The `@token-intelligence-ai/analytics` package provides a modular analytics pipeline for computing token intelligence metrics.
+
+### Architecture
+
+```
+AnalyticsOrchestrator
+  ├── Collectors (data gathering)
+  │   ├── TokenCollector      — token metadata, age, creator
+  │   ├── LiquidityCollector  — liquidity, market cap, DEX data
+  │   ├── HolderCollector     — distribution, whale concentration
+  │   ├── TransactionCollector — volume, buyers/sellers, tx patterns
+  │   ├── DeployerCollector   — deployer history, previous tokens
+  │   └── ChainCollector      — sync status, RPC health
+  ├── Repository  (Prisma queries)
+  ├── Cache       (Redis with in-memory fallback)
+  └── Report      (unified AnalyticsReport)
+```
+
+### `AnalyticsReport`
+
+| Section                | Description                                                                    |
+| ---------------------- | ------------------------------------------------------------------------------ |
+| `tokenAnalytics`       | Token age, chain, creator, supply, contract type, proxy/ownership flags        |
+| `holderAnalytics`      | Top holder %, whale concentration, distribution score, holder growth           |
+| `liquidityAnalytics`   | Liquidity, market cap, FDV, locked liquidity, DEX count                        |
+| `transactionAnalytics` | 24h transactions, unique buyers/sellers, buy/sell ratio, volume                |
+| `deployerAnalytics`    | Deployed contracts, previous tokens, known deployer flag, deployment frequency |
+| `chainAnalytics`       | Latest indexed block, indexed tokens, RPC health, sync delay                   |
+
+### `GET /api/analytics/:chain/:address`
+
+Returns a complete `AnalyticsReport` for the specified token.
+
+**Path parameters:**
+
+- `chain` — chain name (base, ethereum, polygon, robinhood)
+- `address` — token contract address (0x-prefixed)
+
+**Response:** `200 OK`
+
+```json
+{
+  "data": {
+    "token": { "contractAddress": "0x...", "chain": "base" },
+    "chain": "base",
+    "tokenAnalytics": { ... },
+    "holderAnalytics": { ... },
+    "liquidityAnalytics": { ... },
+    "transactionAnalytics": { ... },
+    "deployerAnalytics": { ... },
+    "chainAnalytics": { ... },
+    "generatedAt": "2026-07-16T12:00:00.000Z",
+    "version": "0.1.0"
+  }
+}
+```
+
+**Cache:** Results are cached for 5 minutes by chain + contract address. Cache key format: `analytics:{chain}:{address}`.
+
+### Future AI Integration
+
+The analytics pipeline is designed as the data foundation for the AI Risk Engine. Collectors provide deterministic input data; calculators derive intermediate scores. The future AI layer will consume `AnalyticsReport` to generate risk scores, anomaly detection, and natural-language explanations without re-fetching blockchain data.
+
 ## Observability
 
 - **Health checks:** `/health` reports dependency status; `/ready` reports readiness for orchestration
