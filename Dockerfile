@@ -24,26 +24,32 @@ COPY apps/ apps/
 COPY packages/ packages/
 RUN rm -rf apps/*/node_modules packages/*/node_modules 2>/dev/null; pnpm install --frozen-lockfile
 RUN pnpm build
+RUN rm -rf apps/*/node_modules packages/*/node_modules
 
 # ---- runner-indexer: default target ----
-FROM base AS runner
+FROM node:22-alpine AS runner
+RUN apk add --no-cache tini
 WORKDIR /app
 COPY --from=build /app .
 COPY apps/indexer/bin/start.sh ./bin/start.sh
-RUN chmod +x /app/bin/start.sh
+RUN chmod +x /app/bin/start.sh && chown -R node:node /app
+USER node
 ENV NODE_ENV=production
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
   CMD ps aux | grep -v grep | grep -q "node" || exit 1
+ENTRYPOINT ["/sbin/tini", "--"]
 CMD ["/app/bin/start.sh"]
 
 # ---- runner-api: API service target ----
-FROM base AS runner-api
+FROM node:22-alpine AS runner-api
+RUN apk add --no-cache tini curl
 WORKDIR /app
-RUN apk add --no-cache curl
 COPY --from=build /app .
 COPY apps/api/bin/start.sh ./bin/start.sh
-RUN chmod +x /app/bin/start.sh
+RUN chmod +x /app/bin/start.sh && chown -R node:node /app
+USER node
 ENV NODE_ENV=production
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
   CMD curl -f http://localhost:4000/health || exit 1
+ENTRYPOINT ["/sbin/tini", "--"]
 CMD ["/app/bin/start.sh"]
