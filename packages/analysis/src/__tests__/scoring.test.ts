@@ -7,67 +7,72 @@ function factor(passed: boolean, penalty: number): RiskFactor {
 }
 
 describe('calculateScore', () => {
-  it('returns 100 when all rules pass', () => {
+  it('returns 0 when all rules pass', () => {
     const factors = [factor(true, 0), factor(true, 0)];
-    expect(calculateScore(factors)).toBe(100);
-  });
-
-  it('subtracts penalties from 100', () => {
-    const factors = [factor(false, 20), factor(false, 15)];
-    expect(calculateScore(factors)).toBe(65);
-  });
-
-  it('clamps to 0 minimum', () => {
-    const factors = [factor(false, 80), factor(false, 30)];
     expect(calculateScore(factors)).toBe(0);
   });
 
-  it('only subtracts penalties from failed rules', () => {
+  it('sums penalties from failed rules', () => {
+    const factors = [factor(false, 20), factor(false, 15)];
+    expect(calculateScore(factors)).toBe(35);
+  });
+
+  it('clamps to 0 minimum', () => {
+    const factors = [factor(true, 0), factor(false, -10)];
+    expect(calculateScore(factors)).toBe(0);
+  });
+
+  it('clamps to 100 maximum', () => {
+    const factors = [factor(false, 80), factor(false, 30)];
+    expect(calculateScore(factors)).toBe(100);
+  });
+
+  it('only sums penalties from failed rules', () => {
     const factors = [factor(true, 0), factor(false, 10), factor(false, 15)];
-    expect(calculateScore(factors)).toBe(75);
+    expect(calculateScore(factors)).toBe(25);
   });
 
   it('handles empty factors', () => {
-    expect(calculateScore([])).toBe(100);
+    expect(calculateScore([])).toBe(0);
   });
 });
 
 describe('getRiskLevel', () => {
-  it('returns very_safe for 90-100', () => {
-    expect(getRiskLevel(90)).toBe('very_safe');
-    expect(getRiskLevel(100)).toBe('very_safe');
-    expect(getRiskLevel(95)).toBe('very_safe');
+  it('returns SAFE for 0-20', () => {
+    expect(getRiskLevel(0)).toBe('SAFE');
+    expect(getRiskLevel(20)).toBe('SAFE');
+    expect(getRiskLevel(10)).toBe('SAFE');
   });
 
-  it('returns low for 70-89', () => {
-    expect(getRiskLevel(70)).toBe('low');
-    expect(getRiskLevel(89)).toBe('low');
-    expect(getRiskLevel(80)).toBe('low');
+  it('returns LOW for 21-40', () => {
+    expect(getRiskLevel(21)).toBe('LOW');
+    expect(getRiskLevel(40)).toBe('LOW');
+    expect(getRiskLevel(30)).toBe('LOW');
   });
 
-  it('returns medium for 50-69', () => {
-    expect(getRiskLevel(50)).toBe('medium');
-    expect(getRiskLevel(69)).toBe('medium');
-    expect(getRiskLevel(60)).toBe('medium');
+  it('returns MEDIUM for 41-60', () => {
+    expect(getRiskLevel(41)).toBe('MEDIUM');
+    expect(getRiskLevel(60)).toBe('MEDIUM');
+    expect(getRiskLevel(50)).toBe('MEDIUM');
   });
 
-  it('returns high for 30-49', () => {
-    expect(getRiskLevel(30)).toBe('high');
-    expect(getRiskLevel(49)).toBe('high');
-    expect(getRiskLevel(40)).toBe('high');
+  it('returns HIGH for 61-80', () => {
+    expect(getRiskLevel(61)).toBe('HIGH');
+    expect(getRiskLevel(80)).toBe('HIGH');
+    expect(getRiskLevel(70)).toBe('HIGH');
   });
 
-  it('returns critical for 0-29', () => {
-    expect(getRiskLevel(0)).toBe('critical');
-    expect(getRiskLevel(29)).toBe('critical');
-    expect(getRiskLevel(15)).toBe('critical');
+  it('returns CRITICAL for 81-100', () => {
+    expect(getRiskLevel(81)).toBe('CRITICAL');
+    expect(getRiskLevel(100)).toBe('CRITICAL');
+    expect(getRiskLevel(90)).toBe('CRITICAL');
   });
 });
 
 describe('generateExplanation', () => {
   it('returns safe message when all pass', () => {
     const factors = [factor(true, 0), factor(true, 0)];
-    const msg = generateExplanation(factors, 100, 'very_safe');
+    const msg = generateExplanation(factors, 0, 'SAFE');
     expect(msg).toContain('All checks passed');
   });
 
@@ -75,8 +80,8 @@ describe('generateExplanation', () => {
     const factors = [
       { rule: 'missing_symbol', passed: false, penalty: 20, reason: 'missing symbol' },
     ];
-    const msg = generateExplanation(factors, 80, 'low');
+    const msg = generateExplanation(factors, 20, 'SAFE');
     expect(msg).toContain('missing symbol');
-    expect(msg).toContain('Score: 80/100');
+    expect(msg).toContain('Score: 20/100');
   });
 });

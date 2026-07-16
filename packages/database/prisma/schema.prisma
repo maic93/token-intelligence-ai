@@ -37,14 +37,29 @@ model Token {
 }
 
 model TokenAnalysis {
-  id          String   @id @default(uuid())
-  tokenId     String   @unique
-  token       Token    @relation(fields: [tokenId], references: [id], onDelete: Cascade)
-  riskScore   Int
-  riskLevel   String
-  explanation String
-  factors     Json
-  analyzedAt  DateTime @default(now())
+  id                String   @id @default(uuid())
+  tokenId           String   @unique
+  token             Token    @relation(fields: [tokenId], references: [id], onDelete: Cascade)
+  riskScore         Int
+  riskLevel         String
+  explanation       String
+  factors           Json
+  analyzedAt        DateTime @default(now())
+  ownerRenounced    Boolean  @default(false)
+  mintable          Boolean  @default(false)
+  pausable          Boolean  @default(false)
+  blacklistFunction Boolean  @default(false)
+  proxyContract     Boolean  @default(false)
+  verifiedSource    Boolean  @default(false)
+  buyTax            Int      @default(0)
+  sellTax           Int      @default(0)
+  liquidityLocked   Boolean  @default(false)
+  liquidityPercent  Int      @default(0)
+  holderCount       Int      @default(0)
+  top10HolderPercent Int     @default(0)
+  top1HolderPercent  Int     @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
   @@index([riskScore])
   @@index([riskLevel])

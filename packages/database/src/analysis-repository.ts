@@ -1,10 +1,10 @@
 import { PrismaClient, TokenAnalysis } from '@prisma/client';
-import type { RiskAnalysis } from '@token-intelligence-ai/shared';
+import type { TokenAnalysisData } from '@token-intelligence-ai/shared';
 
 export class AnalysisRepository {
   constructor(private readonly prisma: PrismaClient) {}
 
-  async createAnalysis(tokenId: string, analysis: RiskAnalysis): Promise<TokenAnalysis> {
+  async createAnalysis(tokenId: string, analysis: TokenAnalysisData): Promise<TokenAnalysis> {
     return this.prisma.tokenAnalysis.create({
       data: {
         tokenId,
@@ -13,6 +13,19 @@ export class AnalysisRepository {
         explanation: analysis.explanation,
         factors: JSON.parse(JSON.stringify(analysis.factors)),
         analyzedAt: new Date(analysis.analyzedAt),
+        ownerRenounced: analysis.ownerRenounced,
+        mintable: analysis.mintable,
+        pausable: analysis.pausable,
+        blacklistFunction: analysis.blacklistFunction,
+        proxyContract: analysis.proxyContract,
+        verifiedSource: analysis.verifiedSource,
+        buyTax: analysis.buyTax,
+        sellTax: analysis.sellTax,
+        liquidityLocked: analysis.liquidityLocked,
+        liquidityPercent: analysis.liquidityPercent,
+        holderCount: analysis.holderCount,
+        top10HolderPercent: analysis.top10HolderPercent,
+        top1HolderPercent: analysis.top1HolderPercent,
       },
     });
   }

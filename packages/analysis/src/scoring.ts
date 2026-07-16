@@ -2,16 +2,15 @@ import type { RiskFactor, RiskLevel } from './types.js';
 
 export function calculateScore(factors: RiskFactor[]): number {
   const totalPenalty = factors.reduce((sum, f) => sum + f.penalty, 0);
-  const score = 100 - totalPenalty;
-  return Math.max(0, Math.min(100, score));
+  return Math.max(0, Math.min(100, totalPenalty));
 }
 
 export function getRiskLevel(score: number): RiskLevel {
-  if (score >= 90) return 'very_safe';
-  if (score >= 70) return 'low';
-  if (score >= 50) return 'medium';
-  if (score >= 30) return 'high';
-  return 'critical';
+  if (score <= 20) return 'SAFE';
+  if (score <= 40) return 'LOW';
+  if (score <= 60) return 'MEDIUM';
+  if (score <= 80) return 'HIGH';
+  return 'CRITICAL';
 }
 
 export function generateExplanation(
@@ -24,5 +23,5 @@ export function generateExplanation(
     return 'All checks passed. Token appears safe.';
   }
   const reasons = failed.map((f) => f.reason);
-  return `${reasons.join('. ')}. Score: ${score}/100 — ${level.replace('_', ' ')} risk.`;
+  return `${reasons.join('. ')}. Score: ${score}/100 — ${level} risk.`;
 }
