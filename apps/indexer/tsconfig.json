@@ -12,6 +12,7 @@
     { "path": "../../packages/config" },
     { "path": "../../packages/database" },
     { "path": "../../packages/blockchain" },
-    { "path": "../../packages/shared" }
+    { "path": "../../packages/shared" },
+    { "path": "../../packages/analysis" }
   ]
 }

@@ -26,7 +26,7 @@ Token Intelligence AI is an open-source platform that continuously indexes suppo
 - **REST API** — Paginated token lists, per-token lookup, platform stats, chain status
 - **WebSocket Updates** — Live token discovery pushed to connected clients
 - **Real-time Dashboard** — React 19 + Vite 6 dark-theme UI
-- **Analytics Engine** — Token, holder, liquidity, transaction, deployer, and chain analytics
+- **Token Risk Analysis** — Deterministic scoring engine for every discovered token (0–100 score, 5 risk levels, explainable factors)
 - **Docker Deployment** — Multi-stage builds, healthchecks, Compose orchestration
 - **Structured JSON Logging** — Pretty-print in dev, JSON in production, log levels
 - **Health & Readiness Endpoints** — Dependency probing for Kubernetes
@@ -48,6 +48,7 @@ Token Intelligence AI is an open-source platform that continuously indexes suppo
                     │   Multi-chain Indexer     │
                     │   (one worker per chain)  │
                     │   ERC-20 Detection Engine │
+                    │   Risk Analysis Engine     │
                     └───────────┬───────────────┘
                                 │
                     ┌───────────▼───────────────┐
@@ -96,6 +97,7 @@ token-intelligence-ai/
 │   └── indexer/       Multi-chain block indexer
 ├── packages/
 │   ├── ai/            AI analysis utilities (future)
+│   ├── analysis/      Token risk analysis engine (deterministic scoring)
 │   ├── analytics/     Analytics pipeline (token, holder, liquidity, etc.)
 │   ├── blockchain/    Chain abstraction + config
 │   ├── config/        Shared env validation via Zod
@@ -364,6 +366,43 @@ Chain configuration and indexing status.
 }
 ```
 
+### `GET /api/analysis/:address`
+
+Returns the token risk analysis for a given contract address. Requires `?chain=` query parameter.
+
+| Param     | Type   | Description                           |
+| --------- | ------ | ------------------------------------- |
+| `chain`   | string | Chain name (`base`, `ethereum`, etc.) |
+| `address` | string | Token contract address (0x-prefixed)  |
+
+```json
+{
+  "data": {
+    "riskScore": 85,
+    "riskLevel": "low",
+    "explanation": "Token has no ERC20 symbol. Score: 80/100 — low risk.",
+    "factors": [
+      {
+        "rule": "missing_symbol",
+        "passed": false,
+        "penalty": 20,
+        "reason": "Token has no ERC20 symbol"
+      }
+    ],
+    "analyzedAt": "2026-07-16T12:00:00.000Z"
+  }
+}
+```
+
+### Token List & Detail
+
+The `GET /api/tokens` and `GET /api/tokens/:address` endpoints now include two additional fields:
+
+| Field       | Type             | Description                                                   |
+| ----------- | ---------------- | ------------------------------------------------------------- |
+| `riskScore` | `number \| null` | Risk score (0–100, null if unanalyzed)                        |
+| `riskLevel` | `string \| null` | Risk level (`very_safe`, `low`, `medium`, `high`, `critical`) |
+
 ### `GET /api/analytics/:chain/:address`
 
 Returns a complete analytics report for the specified token. Cached for 5 minutes.
@@ -455,9 +494,9 @@ Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduc
 - [x] Docker multi-stage deployment with healthchecks
 - [x] Prometheus metrics and structured logging
 
-### Next
+### Current
 
-- [ ] Token risk scoring engine
+- [x] Token risk scoring engine (deterministic, 0–100, 7 rules, explainable)
 - [ ] AI-powered anomaly detection
 - [ ] Token search and discovery
 - [ ] Real-time alerts and notifications

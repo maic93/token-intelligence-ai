@@ -8,6 +8,40 @@ interface TokenCardProps {
   onAnalytics?: (chain: string, address: string) => void;
 }
 
+function riskBadgeClass(level: string | null): string {
+  switch (level) {
+    case 'very_safe':
+      return 'risk-very-safe';
+    case 'low':
+      return 'risk-low';
+    case 'medium':
+      return 'risk-medium';
+    case 'high':
+      return 'risk-high';
+    case 'critical':
+      return 'risk-critical';
+    default:
+      return 'risk-unknown';
+  }
+}
+
+function riskLabel(level: string | null): string {
+  switch (level) {
+    case 'very_safe':
+      return 'Very Safe';
+    case 'low':
+      return 'Low Risk';
+    case 'medium':
+      return 'Medium Risk';
+    case 'high':
+      return 'High Risk';
+    case 'critical':
+      return 'Critical';
+    default:
+      return '—';
+  }
+}
+
 export function TokenCard({ token, isNew, onAnalytics }: TokenCardProps) {
   const [copied, setCopied] = useState(false);
 
@@ -26,6 +60,14 @@ export function TokenCard({ token, isNew, onAnalytics }: TokenCardProps) {
           {token.chain}
         </span>
         <span className="token-symbol">{token.tokenSymbol}</span>
+        {token.riskLevel && (
+          <span
+            className={`risk-badge ${riskBadgeClass(token.riskLevel)}`}
+            title={`Risk Score: ${token.riskScore ?? '?'}/100`}
+          >
+            {riskLabel(token.riskLevel)}
+          </span>
+        )}
       </div>
       <div className="token-name">{token.tokenName}</div>
       <div className="token-address" title={token.contractAddress}>

@@ -1,6 +1,7 @@
-import { TokenRepository } from '@token-intelligence-ai/database';
+import { AnalysisRepository, TokenRepository } from '@token-intelligence-ai/database';
 import type { Logger } from '@token-intelligence-ai/shared';
 import type { ChainConfig } from '@token-intelligence-ai/blockchain';
+import { analyze } from '@token-intelligence-ai/analysis';
 import type { RpcClient, RpcTransaction } from './rpc.js';
 import { detectErc20 } from './erc20.js';
 
@@ -9,6 +10,7 @@ export class BlockProcessor {
     private readonly chain: ChainConfig,
     private readonly rpc: RpcClient,
     private readonly tokenRepo: TokenRepository,
+    private readonly analysisRepo: AnalysisRepository,
     private readonly log: Logger,
   ) {}
 
@@ -55,7 +57,7 @@ export class BlockProcessor {
       return;
     }
 
-    await this.tokenRepo.createToken({
+    const token = await this.tokenRepo.createToken({
       chain: this.chain.name,
       chainId: this.chain.chainId,
       contractAddress,
@@ -78,5 +80,24 @@ export class BlockProcessor {
       deployer: tx.from,
       blockNumber: blockNumber.toString(),
     });
+
+    try {
+      const result = await analyze(token, {
+        currentBlockNumber: blockNumber,
+        getDeployerCount: (deployer: string, chain: string) =>
+          this.analysisRepo.getDeployerTokenCount(deployer, chain),
+      });
+      await this.analysisRepo.createAnalysis(token.id, result);
+      this.log.info('Token analyzed', {
+        contractAddress,
+        riskScore: result.riskScore,
+        riskLevel: result.riskLevel,
+      });
+    } catch (error) {
+      this.log.error('Analysis failed', {
+        contractAddress,
+        error: String(error),
+      });
+    }
   }
 }

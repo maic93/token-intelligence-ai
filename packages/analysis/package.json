@@ -1,21 +1,20 @@
 {
-  "name": "@token-intelligence-ai/indexer",
+  "name": "@token-intelligence-ai/analysis",
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "scripts": {
-    "dev": "node --loader ts-node/esm src/index.ts",
     "build": "tsc -p tsconfig.json",
-    "start": "node dist/index.js"
+    "test": "vitest run"
   },
   "dependencies": {
-    "@token-intelligence-ai/analysis": "workspace:*",
     "@token-intelligence-ai/blockchain": "workspace:*",
-    "@token-intelligence-ai/config": "workspace:*",
     "@token-intelligence-ai/database": "workspace:*",
     "@token-intelligence-ai/shared": "workspace:*"
   },
   "devDependencies": {
-    "ts-node": "^10.9.2"
+    "vitest": "^3.0.0"
   }
 }

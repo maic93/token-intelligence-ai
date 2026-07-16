@@ -10,6 +10,23 @@ export interface TokenData {
   blockNumber: string;
   blockTimestamp: string;
   transactionHash: string;
+  riskScore: number | null;
+  riskLevel: string | null;
+}
+
+export interface RiskFactor {
+  rule: string;
+  passed: boolean;
+  penalty: number;
+  reason: string;
+}
+
+export interface RiskAnalysis {
+  riskScore: number;
+  riskLevel: string;
+  explanation: string;
+  factors: RiskFactor[];
+  analyzedAt: string;
 }
 
 export interface TokenListResponse {
