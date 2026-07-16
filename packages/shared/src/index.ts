@@ -10,3 +10,10 @@ export type {
   DeployerData,
   DeployerResponse,
 } from './api-types.js';
+export type {
+  WatchEventType,
+  WatchItem,
+  WatchEvent,
+  AlertMessage,
+  WatchEventsResponse,
+} from './watchlist.js';

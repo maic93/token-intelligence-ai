@@ -1,12 +1,13 @@
 import { useEffect, useRef, useCallback } from 'react';
-import type { TokenData, WebSocketMessage } from '../types';
+import type { TokenData, WebSocketMessage, AlertMessage } from '../types';
 import { createWebSocketUrl } from '../api';
 
 interface UseWebSocketOptions {
   onTokenDiscovery: (token: TokenData) => void;
+  onAlert?: (alert: AlertMessage) => void;
 }
 
-export function useWebSocket({ onTokenDiscovery }: UseWebSocketOptions): {
+export function useWebSocket({ onTokenDiscovery, onAlert }: UseWebSocketOptions): {
   isConnected: () => boolean;
 } {
   const wsRef = useRef<WebSocket | null>(null);
@@ -14,7 +15,9 @@ export function useWebSocket({ onTokenDiscovery }: UseWebSocketOptions): {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isConnectedRef = useRef(false);
   const onTokenRef = useRef(onTokenDiscovery);
+  const onAlertRef = useRef(onAlert);
   onTokenRef.current = onTokenDiscovery;
+  onAlertRef.current = onAlert;
 
   const isConnected = useCallback(() => isConnectedRef.current, []);
 
@@ -33,7 +36,14 @@ export function useWebSocket({ onTokenDiscovery }: UseWebSocketOptions): {
 
       ws.onmessage = (event: MessageEvent) => {
         try {
-          const msg: WebSocketMessage = JSON.parse(event.data);
+          const data = JSON.parse(event.data);
+
+          if (data.type === 'WATCH_EVENT' && data.event) {
+            onAlertRef.current?.(data as AlertMessage);
+            return;
+          }
+
+          const msg = data as WebSocketMessage;
           if (msg.event === 'token:discovery' && msg.data) {
             onTokenRef.current(msg.data);
           }

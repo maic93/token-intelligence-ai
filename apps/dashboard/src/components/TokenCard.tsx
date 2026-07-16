@@ -1,11 +1,14 @@
 import { useState } from 'react';
 import type { TokenData } from '../types';
 import { explorerUrl, shortAddress, timeAgo } from '../utils';
+import { WatchButton } from './WatchButton';
 
 interface TokenCardProps {
   token: TokenData;
   isNew?: boolean;
   onAnalytics?: (chain: string, address: string) => void;
+  isWatched?: boolean;
+  onToggleWatch?: () => void;
 }
 
 function riskBadgeClass(level: string | null): string {
@@ -42,7 +45,7 @@ function riskLabel(level: string | null): string {
   }
 }
 
-export function TokenCard({ token, isNew, onAnalytics }: TokenCardProps) {
+export function TokenCard({ token, isNew, onAnalytics, isWatched, onToggleWatch }: TokenCardProps) {
   const [copied, setCopied] = useState(false);
 
   function handleCopy() {
@@ -56,6 +59,16 @@ export function TokenCard({ token, isNew, onAnalytics }: TokenCardProps) {
     <div className={`token-card ${isNew ? 'token-card-new' : ''}`}>
       {isNew && <span className="new-badge">NEW</span>}
       <div className="token-card-header">
+        <WatchButton
+          chain={token.chain}
+          contractAddress={token.contractAddress}
+          tokenName={token.tokenName}
+          tokenSymbol={token.tokenSymbol}
+          riskScore={token.riskScore}
+          riskLevel={token.riskLevel}
+          isWatched={isWatched ?? false}
+          onToggle={onToggleWatch ?? (() => {})}
+        />
         <span className="chain-badge" data-chain={token.chain}>
           {token.chain}
         </span>

@@ -4,6 +4,7 @@ import type { ChainConfig } from '@token-intelligence-ai/blockchain';
 import { analyze } from '@token-intelligence-ai/analysis';
 import type { RpcClient, RpcTransaction } from './rpc.js';
 import { detectErc20 } from './erc20.js';
+import { publishWatchEvent } from './watch-publisher.js';
 
 export class BlockProcessor {
   constructor(
@@ -81,6 +82,13 @@ export class BlockProcessor {
       blockNumber: blockNumber.toString(),
     });
 
+    await publishWatchEvent(
+      token.id,
+      'NEW_TOKEN',
+      `New token ${metadata.name} (${metadata.symbol}) discovered on ${this.chain.displayName}`,
+      { chain: this.chain.name, contractAddress, name: metadata.name, symbol: metadata.symbol },
+    );
+
     try {
       const result = await analyze(token, {
         currentBlockNumber: blockNumber,
@@ -93,6 +101,20 @@ export class BlockProcessor {
         riskScore: result.riskScore,
         riskLevel: result.riskLevel,
       });
+
+      if (result.riskLevel === 'high' || result.riskLevel === 'critical') {
+        await publishWatchEvent(
+          token.id,
+          'HIGH_RISK',
+          `${metadata.name} (${metadata.symbol}) flagged as ${result.riskLevel} risk (score: ${result.riskScore}/100)`,
+          {
+            chain: this.chain.name,
+            contractAddress,
+            riskScore: result.riskScore,
+            riskLevel: result.riskLevel,
+          },
+        );
+      }
     } catch (error) {
       this.log.error('Analysis failed', {
         contractAddress,

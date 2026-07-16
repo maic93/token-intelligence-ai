@@ -6,9 +6,13 @@ import { LoadingSkeleton } from './LoadingSkeleton';
 export function TokenGrid({
   newKeys,
   onAnalytics,
+  isWatched,
+  onToggleWatch,
 }: {
   newKeys: Set<string>;
   onAnalytics?: (chain: string, address: string) => void;
+  isWatched?: (chain: string, address: string) => boolean;
+  onToggleWatch?: (chain: string, address: string) => void;
 }) {
   const { tokens, loading, error, total, hasMore, filters, updateFilter, loadMore, clearFilters } =
     useTokens();
@@ -102,6 +106,8 @@ export function TokenGrid({
                 token={t}
                 isNew={newKeys.has(`${t.chain}:${t.contractAddress}`)}
                 onAnalytics={onAnalytics}
+                isWatched={isWatched?.(t.chain, t.contractAddress) ?? false}
+                onToggleWatch={() => onToggleWatch?.(t.chain, t.contractAddress)}
               />
             ))}
           </div>

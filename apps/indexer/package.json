@@ -13,7 +13,8 @@
     "@token-intelligence-ai/blockchain": "workspace:*",
     "@token-intelligence-ai/config": "workspace:*",
     "@token-intelligence-ai/database": "workspace:*",
-    "@token-intelligence-ai/shared": "workspace:*"
+    "@token-intelligence-ai/shared": "workspace:*",
+    "redis": "^4.6.0"
   },
   "devDependencies": {
     "ts-node": "^10.9.2"

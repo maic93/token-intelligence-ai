@@ -5,6 +5,7 @@ import { getEnabledChains, type ChainConfig } from '@token-intelligence-ai/block
 import { config } from './config.js';
 import { RpcClient } from './rpc.js';
 import { BlockProcessor } from './processor.js';
+import { initWatchPublisher, shutdownWatchPublisher } from './watch-publisher.js';
 
 const log = createLogger('indexer');
 let shuttingDown = false;
@@ -97,6 +98,8 @@ async function main(): Promise<void> {
     pollIntervalMs: config.POLL_INTERVAL_MS,
   });
 
+  await initWatchPublisher(config.REDIS_URL);
+
   process.on('SIGTERM', () => {
     log.info('Shutdown requested', { signal: 'SIGTERM' });
     shuttingDown = true;
@@ -119,6 +122,7 @@ async function main(): Promise<void> {
     await Promise.all(workers);
   } finally {
     log.info('Indexer stopped');
+    await shutdownWatchPublisher();
     await prisma.$disconnect();
   }
 }
