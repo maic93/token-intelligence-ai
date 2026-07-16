@@ -6,6 +6,7 @@
     { "path": "./packages/ai" },
     { "path": "./packages/analytics" },
     { "path": "./packages/blockchain" },
+    { "path": "./packages/config" },
     { "path": "./packages/database" },
     { "path": "./packages/shared" },
     { "path": "./packages/ui" }

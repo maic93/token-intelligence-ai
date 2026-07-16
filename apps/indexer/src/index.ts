@@ -2,7 +2,7 @@ import { prisma, TokenRepository } from '@token-intelligence-ai/database';
 import { createLogger } from '@token-intelligence-ai/shared';
 import type { Logger } from '@token-intelligence-ai/shared';
 import { getEnabledChains, type ChainConfig } from '@token-intelligence-ai/blockchain';
-import { loadConfig, type IndexerConfig } from './config.js';
+import { config } from './config.js';
 import { RpcClient } from './rpc.js';
 import { BlockProcessor } from './processor.js';
 
@@ -26,7 +26,7 @@ async function resolveStartBlock(
   return backfill > 0n ? backfill : 0n;
 }
 
-async function runWorker(chain: ChainConfig, config: IndexerConfig): Promise<void> {
+async function runWorker(chain: ChainConfig): Promise<void> {
   const workerLog: Logger = createLogger(`indexer:${chain.displayName}`);
   const tokenRepo = new TokenRepository(prisma);
   const rpc = new RpcClient(chain.rpcUrl, workerLog);
@@ -36,17 +36,17 @@ async function runWorker(chain: ChainConfig, config: IndexerConfig): Promise<voi
     tokenRepo,
     rpc,
     chain,
-    config.startBlock,
-    config.backfillBlocks,
+    config.START_BLOCK,
+    config.BACKFILL_BLOCKS,
   );
 
   workerLog.info('Worker starting', {
     chain: chain.name,
     chainId: chain.chainId,
     rpcUrl: chain.rpcUrl,
-    startBlock: config.startBlock,
-    backfillBlocks: config.backfillBlocks,
-    pollIntervalMs: config.pollIntervalMs,
+    startBlock: config.START_BLOCK,
+    backfillBlocks: config.BACKFILL_BLOCKS,
+    pollIntervalMs: config.POLL_INTERVAL_MS,
     currentBlock: currentBlock.toString(),
   });
 
@@ -76,7 +76,7 @@ async function runWorker(chain: ChainConfig, config: IndexerConfig): Promise<voi
     }
 
     if (!shuttingDown) {
-      await sleep(config.pollIntervalMs);
+      await sleep(config.POLL_INTERVAL_MS);
     }
   }
 
@@ -84,7 +84,6 @@ async function runWorker(chain: ChainConfig, config: IndexerConfig): Promise<voi
 }
 
 async function main(): Promise<void> {
-  const config = loadConfig();
   const chains = getEnabledChains();
 
   if (chains.length === 0) {
@@ -94,7 +93,7 @@ async function main(): Promise<void> {
 
   log.info('Indexer starting', {
     chains: chains.map((c) => `${c.displayName} (chainId: ${c.chainId})`),
-    pollIntervalMs: config.pollIntervalMs,
+    pollIntervalMs: config.POLL_INTERVAL_MS,
   });
 
   process.on('SIGTERM', () => {
@@ -108,7 +107,7 @@ async function main(): Promise<void> {
 
   try {
     const workers = chains.map((chain) =>
-      runWorker(chain, config).catch((error) => {
+      runWorker(chain).catch((error) => {
         log.error('Worker failed', {
           chain: chain.name,
           error: String(error),

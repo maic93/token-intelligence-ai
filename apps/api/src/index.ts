@@ -1,24 +1,59 @@
 import { createLogger } from '@token-intelligence-ai/shared';
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
+import compression from 'compression';
+import rateLimit from 'express-rate-limit';
 import path from 'node:path';
 import { prisma } from '@token-intelligence-ai/database';
 import { config } from './config.js';
 import { healthRouter } from './routes/health.js';
+import { readyRouter } from './routes/ready.js';
 import { tokensRouter } from './routes/tokens.js';
 import { statsRouter } from './routes/stats.js';
 import { chainsRouter } from './routes/chains.js';
+import { metricsRouter, trackRequest, initMetrics } from './routes/metrics.js';
 import { errorHandler } from './middleware/error-handler.js';
 import { requestLogger } from './middleware/request-logger.js';
+import { requestIdMiddleware } from './middleware/request-id.js';
 
 const log = createLogger('api');
-const app = express();
+const app: import('express').Application = express();
 
-app.use(cors());
+initMetrics();
+
+app.set('trust proxy', 1);
+app.disable('x-powered-by');
+
+app.use(
+  helmet({
+    contentSecurityPolicy: false,
+    crossOriginEmbedderPolicy: false,
+  }),
+);
+app.use(
+  cors({
+    origin: config.CORS_ORIGIN === '*' ? '*' : config.CORS_ORIGIN.split(','),
+    credentials: true,
+  }),
+);
+app.use(compression());
 app.use(express.json());
+app.use(requestIdMiddleware);
 app.use(requestLogger(log));
 
+const limiter = rateLimit({
+  windowMs: config.RATE_LIMIT_WINDOW_MS,
+  max: config.RATE_LIMIT_MAX,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests, please try again later' },
+});
+app.use('/api', limiter);
+
 app.use('/health', healthRouter);
+app.use('/ready', readyRouter);
+app.use('/metrics', metricsRouter);
 app.use('/api/tokens', tokensRouter);
 app.use('/api/stats', statsRouter);
 app.use('/api/chains', chainsRouter);
@@ -33,16 +68,52 @@ if (config.NODE_ENV === 'production') {
 
 app.use(errorHandler(log));
 
+let redisClient: import('redis').RedisClientType | null = null;
+let wsServer: import('ws').WebSocketServer | null = null;
+let server: ReturnType<typeof app.listen> | null = null;
+
+export function setRedisClient(client: typeof redisClient): void {
+  redisClient = client;
+}
+
+export function setWsServer(wss: typeof wsServer): void {
+  wsServer = wss;
+}
+
 async function shutdown(signal: string): Promise<void> {
   log.info('Shutdown requested', { signal });
+
+  if (server) {
+    await new Promise<void>((resolve) => server!.close(() => resolve()));
+    log.info('HTTP server closed');
+  }
+
+  if (redisClient) {
+    try {
+      await redisClient.quit();
+      log.info('Redis disconnected');
+    } catch {
+      redisClient.disconnect();
+    }
+  }
+
+  if (wsServer) {
+    wsServer.clients.forEach((client) => client.close());
+    wsServer.close();
+    log.info('WebSocket server closed');
+  }
+
   await prisma.$disconnect();
+  log.info('Prisma disconnected');
+
   log.info('API stopped');
-  process.exit(0);
 }
 
 process.on('SIGTERM', () => shutdown('SIGTERM'));
 process.on('SIGINT', () => shutdown('SIGINT'));
 
-app.listen(config.PORT, () => {
-  log.info('API listening', { port: config.PORT });
+server = app.listen(config.PORT, () => {
+  log.info('API listening', { port: config.PORT, env: config.NODE_ENV });
 });
+
+export { trackRequest };

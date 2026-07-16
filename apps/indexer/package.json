@@ -9,8 +9,9 @@
     "start": "node dist/index.js"
   },
   "dependencies": {
-    "@token-intelligence-ai/database": "workspace:*",
     "@token-intelligence-ai/blockchain": "workspace:*",
+    "@token-intelligence-ai/config": "workspace:*",
+    "@token-intelligence-ai/database": "workspace:*",
     "@token-intelligence-ai/shared": "workspace:*"
   },
   "devDependencies": {
