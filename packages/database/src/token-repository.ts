@@ -3,6 +3,7 @@ import type { ChainName } from '@token-intelligence-ai/blockchain';
 
 export interface CreateTokenInput {
   chain: ChainName;
+  chainId: number;
   contractAddress: string;
   deployer: string;
   name: string;
@@ -27,6 +28,7 @@ export class TokenRepository {
     return this.prisma.token.create({
       data: {
         chain: input.chain,
+        chainId: input.chainId,
         contractAddress: input.contractAddress.toLowerCase(),
         deployer: input.deployer.toLowerCase(),
         name: input.name,

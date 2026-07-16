@@ -10,6 +10,7 @@ datasource db {
 model Token {
   id              String   @id @default(uuid())
   chain           String
+  chainId         Int
   contractAddress String
   deployer        String
   name            String
@@ -23,6 +24,7 @@ model Token {
 
   @@unique([chain, contractAddress])
   @@index([chain])
+  @@index([chainId])
   @@index([discoveredAt])
   @@map("tokens")
 }

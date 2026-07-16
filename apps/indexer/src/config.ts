@@ -1,5 +1,4 @@
 export interface IndexerConfig {
-  baseRpcUrl: string;
   databaseUrl: string;
   startBlock: number;
   backfillBlocks: number;
@@ -7,7 +6,6 @@ export interface IndexerConfig {
 }
 
 export function loadConfig(): IndexerConfig {
-  const baseRpcUrl = requireEnv('BASE_RPC_URL');
   const databaseUrl = requireEnv('DATABASE_URL');
   const startBlock = parseOptionalInt('START_BLOCK', 0);
   const backfillBlocks = parseOptionalInt('BACKFILL_BLOCKS', 0);
@@ -17,7 +15,7 @@ export function loadConfig(): IndexerConfig {
     throw new Error('POLL_INTERVAL_MS must be at least 1000');
   }
 
-  return { baseRpcUrl, databaseUrl, startBlock, backfillBlocks, pollIntervalMs };
+  return { databaseUrl, startBlock, backfillBlocks, pollIntervalMs };
 }
 
 function requireEnv(name: string): string {

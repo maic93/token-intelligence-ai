@@ -431,6 +431,18 @@ body {
   margin-bottom: 8px;
 }
 
+.chain-item-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.chain-id {
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+}
+
 .chain-item-details {
   display: flex;
   flex-direction: column;

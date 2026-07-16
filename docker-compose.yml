@@ -27,6 +27,8 @@ services:
       NODE_ENV: production
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/token_intelligence
       BASE_RPC_URL: https://mainnet.base.org
+      ETHEREUM_RPC_URL: https://eth.merkle.io
+      POLYGON_RPC_URL: https://polygon-rpc.com
       START_BLOCK: '0'
       BACKFILL_BLOCKS: '0'
       POLL_INTERVAL_MS: '12000'

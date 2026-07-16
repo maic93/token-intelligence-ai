@@ -1,12 +1,12 @@
 import { TokenRepository } from '@token-intelligence-ai/database';
 import type { Logger } from '@token-intelligence-ai/shared';
+import type { ChainConfig } from '@token-intelligence-ai/blockchain';
 import type { RpcClient, RpcTransaction } from './rpc.js';
 import { detectErc20 } from './erc20.js';
 
-const CHAIN = 'base' as const;
-
 export class BlockProcessor {
   constructor(
+    private readonly chain: ChainConfig,
     private readonly rpc: RpcClient,
     private readonly tokenRepo: TokenRepository,
     private readonly log: Logger,
@@ -18,11 +18,11 @@ export class BlockProcessor {
 
     for (const tx of block.transactions) {
       if (tx.to !== null) continue;
-
       try {
         await this.processContractCreation(tx, blockNumber, blockTimestamp);
       } catch (error) {
         this.log.error('Failed to process transaction', {
+          chain: this.chain.name,
           txHash: tx.hash,
           blockNumber: blockNumber.toString(),
           error: String(error),
@@ -30,7 +30,7 @@ export class BlockProcessor {
       }
     }
 
-    await this.tokenRepo.saveLastProcessedBlock(CHAIN, blockNumber);
+    await this.tokenRepo.saveLastProcessedBlock(this.chain.name, blockNumber);
   }
 
   private async processContractCreation(
@@ -39,15 +39,13 @@ export class BlockProcessor {
     blockTimestamp: Date,
   ): Promise<void> {
     const receipt = await this.rpc.getTransactionReceipt(tx.hash);
-
     if (!receipt.contractAddress) return;
     if (receipt.status !== '0x1') return;
 
     const contractAddress = receipt.contractAddress.toLowerCase();
-
-    const exists = await this.tokenRepo.tokenExists(CHAIN, contractAddress);
+    const exists = await this.tokenRepo.tokenExists(this.chain.name, contractAddress);
     if (exists) {
-      this.log.info('Duplicate skipped', { contractAddress, chain: CHAIN });
+      this.log.info('Duplicate skipped', { contractAddress, chain: this.chain.name });
       return;
     }
 
@@ -58,7 +56,8 @@ export class BlockProcessor {
     }
 
     await this.tokenRepo.createToken({
-      chain: CHAIN,
+      chain: this.chain.name,
+      chainId: this.chain.chainId,
       contractAddress,
       deployer: tx.from.toLowerCase(),
       name: metadata.name,
@@ -71,6 +70,7 @@ export class BlockProcessor {
     });
 
     this.log.info('New token discovered', {
+      chain: this.chain.name,
       contractAddress,
       symbol: metadata.symbol,
       name: metadata.name,
