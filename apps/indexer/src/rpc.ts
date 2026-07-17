@@ -49,6 +49,7 @@ export interface CallOptions {
 const MAX_ATTEMPTS = 5;
 const BASE_DELAY_MS = 1_000;
 const MAX_DELAY_MS = 30_000;
+const REQUEST_TIMEOUT_MS = 30_000;
 
 export class RpcClient {
   private nextId = 0;
@@ -79,11 +80,20 @@ export class RpcClient {
           params,
         };
 
-        const response = await fetch(this.url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(request),
-        });
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+        let response: Response;
+        try {
+          response = await fetch(this.url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(request),
+            signal: controller.signal,
+          });
+        } finally {
+          clearTimeout(timeout);
+        }
 
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}: ${response.statusText}`);

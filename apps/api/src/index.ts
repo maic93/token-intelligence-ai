@@ -5,6 +5,8 @@ import helmet from 'helmet';
 import compression from 'compression';
 import rateLimit from 'express-rate-limit';
 import path from 'node:path';
+import http from 'node:http';
+import { WebSocketServer } from 'ws';
 import { prisma } from '@token-intelligence-ai/database';
 import { config } from './config.js';
 import { healthRouter } from './routes/health.js';
@@ -157,7 +159,27 @@ async function shutdown(signal: string): Promise<void> {
 process.on('SIGTERM', () => shutdown('SIGTERM'));
 process.on('SIGINT', () => shutdown('SIGINT'));
 
-server = app.listen(config.PORT, () => {
+const httpServer = http.createServer(app);
+
+const wss = new WebSocketServer({ noServer: true });
+
+httpServer.on('upgrade', (request, socket, head) => {
+  const url = new URL(request.url ?? '/', 'http://localhost');
+  if (url.pathname === '/ws') {
+    wss.handleUpgrade(request, socket, head, (ws) => {
+      wss.emit('connection', ws, request);
+    });
+  } else {
+    socket.destroy();
+  }
+});
+
+setWsServer(wss);
+log.info('WebSocket server attached');
+
+server = httpServer;
+
+httpServer.listen(config.PORT, () => {
   log.info('API listening', { port: config.PORT, env: config.NODE_ENV });
 });
 

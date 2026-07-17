@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Coins, ShieldCheck, Link2, Wifi } from 'lucide-react';
+import { useStats } from '../hooks/useStats';
 
 interface HeroMetric {
   icon: React.ReactNode;
@@ -31,11 +32,28 @@ function AnimatedCounter({ target, duration = 1500 }: { target: number; duration
 }
 
 export function HeroSection() {
+  const { stats } = useStats();
+
   const metrics: HeroMetric[] = [
-    { icon: <Coins size={16} />, value: 2847, label: 'Tokens Indexed', color: '#6366f1' },
-    { icon: <ShieldCheck size={16} />, value: 2847, label: 'Risk Analyses', color: '#22c55e' },
-    { icon: <Link2 size={16} />, value: 4, label: 'Chains', color: '#f97316' },
-    { icon: <Wifi size={16} />, value: 1, label: 'WebSocket', color: '#84cc16' },
+    {
+      icon: <Coins size={16} />,
+      value: stats?.totalTokens ?? 0,
+      label: 'Tokens Indexed',
+      color: '#6366f1',
+    },
+    {
+      icon: <ShieldCheck size={16} />,
+      value: stats?.totalTokens ?? 0,
+      label: 'Risk Analyses',
+      color: '#22c55e',
+    },
+    {
+      icon: <Link2 size={16} />,
+      value: stats?.chains.length ?? 0,
+      label: 'Chains',
+      color: '#f97316',
+    },
+    { icon: <Wifi size={16} />, value: stats ? 1 : 0, label: 'WebSocket', color: '#84cc16' },
   ];
 
   return (
