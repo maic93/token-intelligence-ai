@@ -11,8 +11,7 @@ export function StatsSection() {
       label: 'Total Tokens',
       value: stats?.totalTokens ?? 0,
       color: 'accent' as const,
-      trend: 'up' as const,
-      trendLabel: '+12%',
+      trend: stats && stats.recentTokens24h > 0 ? ('up' as const) : ('neutral' as const),
     },
     {
       icon: <Clock size={18} />,

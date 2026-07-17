@@ -17,8 +17,8 @@ export async function detectErc20(
   contractAddress: string,
 ): Promise<Erc20Metadata | null> {
   const [symbolResult, decimalsResult] = await Promise.allSettled([
-    rpc.ethCall(contractAddress, SELECTOR_SYMBOL, { retry: false }),
-    rpc.ethCall(contractAddress, SELECTOR_DECIMALS, { retry: false }),
+    rpc.ethCall(contractAddress, SELECTOR_SYMBOL),
+    rpc.ethCall(contractAddress, SELECTOR_DECIMALS),
   ]);
 
   if (symbolResult.status === 'rejected' || decimalsResult.status === 'rejected') {

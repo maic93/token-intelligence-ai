@@ -19,7 +19,7 @@ export interface CreateTokenInput {
 export interface ListTokensOptions {
   chain?: ChainName;
   limit?: number;
-  cursor?: string;
+  skip?: number;
 }
 
 export interface SearchTokensOptions {
@@ -92,7 +92,7 @@ export class TokenRepository {
   }
 
   async listTokens(options: ListTokensOptions = {}): Promise<TokenWithAnalysis[]> {
-    const { chain, limit = 50, cursor } = options;
+    const { chain, limit = 50, skip = 0 } = options;
 
     const where: Prisma.TokenWhereInput = chain ? { chain } : {};
 
@@ -100,15 +100,11 @@ export class TokenRepository {
       where,
       orderBy: { discoveredAt: 'desc' },
       take: limit + 1,
+      skip,
       include: {
         analysis: { select: { riskScore: true, riskLevel: true } },
       },
     };
-
-    if (cursor) {
-      findArgs.cursor = { id: cursor };
-      findArgs.skip = 1;
-    }
 
     const items = (await this.prisma.token.findMany(findArgs)) as TokenWithAnalysis[];
     if (items.length > limit) items.pop();

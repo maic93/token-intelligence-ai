@@ -94,17 +94,17 @@ router.get('/', async (req, res, next) => {
       return;
     }
 
-    const cursor = query.cursor || undefined;
+    const skip = (query.page - 1) * query.limit;
 
     const tokens = await tokenRepo.listTokens({
       chain: query.chain as ChainName | undefined,
       limit: query.limit,
-      cursor,
+      skip,
     });
 
     res.json({
       data: tokens.map(formatToken),
-      nextCursor: null,
+      nextCursor: tokens.length === query.limit ? String(query.page + 1) : null,
       pagination: { page: query.page, limit: query.limit },
     });
   } catch (error) {
