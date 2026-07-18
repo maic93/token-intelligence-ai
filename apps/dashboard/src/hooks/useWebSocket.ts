@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { TokenData, WebSocketMessage, AlertMessage } from '../types';
 import { createWebSocketUrl } from '../api';
 
@@ -8,18 +8,16 @@ interface UseWebSocketOptions {
 }
 
 export function useWebSocket({ onTokenDiscovery, onAlert }: UseWebSocketOptions): {
-  isConnected: () => boolean;
+  isConnected: boolean;
 } {
   const wsRef = useRef<WebSocket | null>(null);
   const retriesRef = useRef(0);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const isConnectedRef = useRef(false);
+  const [isConnected, setIsConnected] = useState(false);
   const onTokenRef = useRef(onTokenDiscovery);
   const onAlertRef = useRef(onAlert);
   onTokenRef.current = onTokenDiscovery;
   onAlertRef.current = onAlert;
-
-  const isConnected = useCallback(() => isConnectedRef.current, []);
 
   useEffect(() => {
     let closed = false;
@@ -30,7 +28,7 @@ export function useWebSocket({ onTokenDiscovery, onAlert }: UseWebSocketOptions)
       wsRef.current = ws;
 
       ws.onopen = () => {
-        isConnectedRef.current = true;
+        setIsConnected(true);
         retriesRef.current = 0;
       };
 
@@ -53,7 +51,7 @@ export function useWebSocket({ onTokenDiscovery, onAlert }: UseWebSocketOptions)
       };
 
       ws.onclose = () => {
-        isConnectedRef.current = false;
+        setIsConnected(false);
         wsRef.current = null;
         if (closed) return;
         const delay = Math.min(1000 * Math.pow(2, retriesRef.current), 30_000);
