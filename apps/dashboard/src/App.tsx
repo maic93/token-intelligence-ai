@@ -144,7 +144,7 @@ export default function App() {
         />
         <div className="main-area">
           <TopNav
-            connected={isConnected()}
+            connected={isConnected}
             onMenuToggle={() => setSidebarOpen((p) => !p)}
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
@@ -174,14 +174,14 @@ export default function App() {
       />
       <div className="main-area">
         <TopNav
-          connected={isConnected()}
+          connected={isConnected}
           onMenuToggle={() => setSidebarOpen((p) => !p)}
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
           unreadCount={unreadCount}
           onBellClick={() => markAllSeen()}
         />
-        {!isConnected() && <ConnectionBanner />}
+        {!isConnected && <ConnectionBanner />}
         <AlertNotification alerts={alerts} />
         <main className="main-content">
           <AnimatePresence mode="wait">
