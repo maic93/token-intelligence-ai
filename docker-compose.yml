@@ -58,6 +58,9 @@ services:
       CORS_ORIGIN: '*'
       RATE_LIMIT_WINDOW_MS: '60000'
       RATE_LIMIT_MAX: '100'
+      BASE_RPC_URL: https://mainnet.base.org
+      ETHEREUM_RPC_URL: https://eth.merkle.io
+      POLYGON_RPC_URL: https://polygon-rpc.com
     depends_on:
       postgres:
         condition: service_healthy
