@@ -19,44 +19,84 @@ export class BlockProcessor {
     const block = await this.rpc.getBlock(blockNumber);
     const blockTimestamp = new Date(parseInt(block.timestamp, 16) * 1000);
 
-    for (const tx of block.transactions) {
-      if (tx.to !== null) continue;
+    const totalTxs = block.transactions.length;
+
+    if (totalTxs > 0) {
+      this.log.info('ProcessBlock detail', {
+        block: blockNumber.toString(),
+        totalTransactions: totalTxs,
+      });
+    }
+
+    const receipts = await this.rpc.getTransactionReceipts(block.transactions.map((tx) => tx.hash));
+
+    let contractDeployments = 0;
+
+    for (let i = 0; i < block.transactions.length; i++) {
+      const tx = block.transactions[i];
+      const receipt = receipts[i];
+
+      if (!receipt) continue;
+      if (!receipt.contractAddress) continue;
+      if (receipt.status !== '0x1') continue;
+
+      contractDeployments++;
+
       try {
-        await this.processContractCreation(tx, blockNumber, blockTimestamp);
+        await this.processContractDeployment(tx, receipt, blockNumber, blockTimestamp);
       } catch (error) {
-        this.log.error('Failed to process transaction', {
+        this.log.error('Failed to process contract deployment', {
           chain: this.chain.name,
           txHash: tx.hash,
+          contractAddress: receipt.contractAddress,
           blockNumber: blockNumber.toString(),
           error: String(error),
         });
       }
     }
 
+    if (contractDeployments > 0) {
+      this.log.info('Block processed', {
+        block: blockNumber.toString(),
+        totalTransactions: totalTxs,
+        contractDeployments,
+      });
+    }
+
     await this.tokenRepo.saveLastProcessedBlock(this.chain.name, blockNumber);
   }
 
-  private async processContractCreation(
+  private async processContractDeployment(
     tx: RpcTransaction,
+    receipt: { contractAddress: string | null; status: string; transactionHash: string },
     blockNumber: bigint,
     blockTimestamp: Date,
   ): Promise<void> {
-    const receipt = await this.rpc.getTransactionReceipt(tx.hash);
-    if (!receipt.contractAddress) return;
-    if (receipt.status !== '0x1') return;
-
-    const contractAddress = receipt.contractAddress.toLowerCase();
+    const contractAddress = receipt.contractAddress!.toLowerCase();
     const exists = await this.tokenRepo.tokenExists(this.chain.name, contractAddress);
     if (exists) {
-      this.log.info('Duplicate skipped', { contractAddress, chain: this.chain.name });
       return;
     }
+
+    this.log.info('Contract deployed', {
+      contractAddress,
+      deployer: tx.from,
+      txHash: tx.hash,
+      block: blockNumber.toString(),
+    });
 
     const metadata = await detectErc20(this.rpc, contractAddress);
     if (!metadata) {
-      this.log.info('Metadata failure', { contractAddress });
+      this.log.info('Not an ERC20 token', { contractAddress });
       return;
     }
+
+    this.log.info('ERC20 validated, saving token', {
+      contractAddress,
+      name: metadata.name,
+      symbol: metadata.symbol,
+      decimals: metadata.decimals,
+    });
 
     const token = await this.tokenRepo.createToken({
       chain: this.chain.name,
@@ -72,14 +112,11 @@ export class BlockProcessor {
       transactionHash: tx.hash,
     });
 
-    this.log.info('New token discovered', {
-      chain: this.chain.name,
+    this.log.info('Token saved to database', {
+      tokenId: token.id,
       contractAddress,
       symbol: metadata.symbol,
       name: metadata.name,
-      decimals: metadata.decimals,
-      deployer: tx.from,
-      blockNumber: blockNumber.toString(),
     });
 
     await publishWatchEvent(
@@ -88,6 +125,8 @@ export class BlockProcessor {
       `New token ${metadata.name} (${metadata.symbol}) discovered on ${this.chain.displayName}`,
       { chain: this.chain.name, contractAddress, name: metadata.name, symbol: metadata.symbol },
     );
+
+    this.log.info('Watch event published', { tokenId: token.id, eventType: 'NEW_TOKEN' });
 
     try {
       const result = await analyze(token, {
