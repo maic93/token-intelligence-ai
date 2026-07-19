@@ -8,6 +8,8 @@ export type {
   SearchTokensOptions,
   SearchTokensResult,
   TokenWithAnalysis,
+  ListB20TokensOptions,
+  B20Analytics,
 } from './token-repository.js';
 export type { Token } from '@prisma/client';
 export type { TokenAnalysis } from '@prisma/client';

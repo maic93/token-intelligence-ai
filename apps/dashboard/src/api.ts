@@ -7,6 +7,7 @@ import type {
   AnalyticsResponse,
   PlatformAnalyticsResponse,
   DeployerResponse,
+  B20ListResponse,
 } from './types';
 
 const API_BASE = '/api';
@@ -107,6 +108,25 @@ export function fetchAnalysis(
     `${API_BASE}/analysis/${encodeURIComponent(address)}?chain=${encodeURIComponent(chain)}`,
     signal,
   );
+}
+
+export function fetchB20Tokens(
+  params: {
+    page?: number;
+    limit?: number;
+    minConfidence?: number;
+    sort?: string;
+    q?: string;
+    risk?: string;
+  },
+  signal?: AbortSignal,
+): Promise<B20ListResponse> {
+  const search = new URLSearchParams();
+  if (params.page) search.set('page', String(params.page));
+  if (params.limit) search.set('limit', String(params.limit));
+  if (params.minConfidence !== undefined) search.set('minConfidence', String(params.minConfidence));
+  if (params.sort) search.set('sort', params.sort);
+  return fetchJson<B20ListResponse>(`${API_BASE}/b20?${search.toString()}`, signal);
 }
 
 export function createWebSocketUrl(): string {

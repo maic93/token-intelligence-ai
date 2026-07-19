@@ -15,6 +15,8 @@ export interface CreateTokenInput {
   blockTimestamp: Date;
   transactionHash: string;
   metadataConfidence: number;
+  isB20: boolean;
+  b20Confidence: number;
 }
 
 export interface ListTokensOptions {
@@ -47,6 +49,24 @@ export interface SearchTokensResult {
   total: number;
 }
 
+export interface ListB20TokensOptions {
+  limit?: number;
+  skip?: number;
+  minConfidence?: number;
+  sort?: 'confidence_desc' | 'confidence_asc' | 'newest' | 'oldest';
+}
+
+export interface B20Analytics {
+  totalB20Tokens: number;
+  averageConfidence: number;
+  highestConfidence: number;
+  newestB20: TokenWithAnalysis | null;
+  detectedToday: number;
+  detectedHour: number;
+  topCreator: { deployer: string; count: number } | null;
+  highestRisk: TokenWithAnalysis | null;
+}
+
 export class TokenRepository {
   constructor(private readonly prisma: PrismaClient) {}
 
@@ -62,6 +82,8 @@ export class TokenRepository {
         decimals: input.decimals,
         totalSupply: input.totalSupply,
         metadataConfidence: input.metadataConfidence,
+        isB20: input.isB20,
+        b20Confidence: input.b20Confidence,
         blockNumber: input.blockNumber,
         blockTimestamp: input.blockTimestamp,
         transactionHash: input.transactionHash,
@@ -293,6 +315,116 @@ export class TokenRepository {
   async getLatestCursors(): Promise<{ chain: string; blockNumber: bigint }[]> {
     const cursors = await this.prisma.syncCursor.findMany();
     return cursors.map((c) => ({ chain: c.chain, blockNumber: c.blockNumber }));
+  }
+
+  async getDeployerB20Count(deployer: string): Promise<number> {
+    return this.prisma.token.count({
+      where: { deployer: deployer.toLowerCase(), isB20: true },
+    });
+  }
+
+  async listB20Tokens(options: ListB20TokensOptions = {}): Promise<TokenWithAnalysis[]> {
+    const { limit = 50, skip = 0, minConfidence, sort = 'confidence_desc' } = options;
+
+    const where: Prisma.TokenWhereInput = { isB20: true };
+    if (minConfidence !== undefined) {
+      where.b20Confidence = { gte: minConfidence };
+    }
+
+    let orderBy: Prisma.TokenOrderByWithRelationInput;
+    switch (sort) {
+      case 'confidence_desc':
+        orderBy = { b20Confidence: 'desc' };
+        break;
+      case 'confidence_asc':
+        orderBy = { b20Confidence: 'asc' };
+        break;
+      case 'newest':
+        orderBy = { discoveredAt: 'desc' };
+        break;
+      case 'oldest':
+        orderBy = { discoveredAt: 'asc' };
+        break;
+      default:
+        orderBy = { b20Confidence: 'desc' };
+    }
+
+    const items = (await this.prisma.token.findMany({
+      where,
+      orderBy,
+      take: limit + 1,
+      skip,
+      include: {
+        analysis: { select: { riskScore: true, riskLevel: true } },
+      },
+    })) as TokenWithAnalysis[];
+
+    if (items.length > limit) items.pop();
+    return items;
+  }
+
+  async getB20Analytics(): Promise<B20Analytics> {
+    const whereB20: Prisma.TokenWhereInput = { isB20: true };
+
+    const [totalB20Tokens, b20Tokens] = await Promise.all([
+      this.prisma.token.count({ where: whereB20 }),
+      this.prisma.token.findMany({
+        where: whereB20,
+        orderBy: { discoveredAt: 'desc' },
+        include: {
+          analysis: { select: { riskScore: true, riskLevel: true } },
+        },
+      }) as Promise<TokenWithAnalysis[]>,
+    ]);
+
+    const confidences = b20Tokens.map((t) => t.b20Confidence);
+    const averageConfidence =
+      confidences.length > 0
+        ? Math.round(confidences.reduce((a, b) => a + b, 0) / confidences.length)
+        : 0;
+    const highestConfidence = confidences.length > 0 ? Math.max(...confidences) : 0;
+    const newestB20 = b20Tokens.length > 0 ? b20Tokens[0] : null;
+
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const hourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+
+    const [detectedToday, detectedHour, deployerGroups] = await Promise.all([
+      this.prisma.token.count({
+        where: { ...whereB20, discoveredAt: { gte: todayStart } },
+      }),
+      this.prisma.token.count({
+        where: { ...whereB20, discoveredAt: { gte: hourAgo } },
+      }),
+      this.prisma.token.groupBy({
+        by: ['deployer'],
+        where: whereB20,
+        _count: { deployer: true },
+        orderBy: { _count: { deployer: 'desc' } },
+        take: 1,
+      }),
+    ]);
+
+    const topCreator =
+      deployerGroups.length > 0
+        ? { deployer: deployerGroups[0].deployer, count: deployerGroups[0]._count.deployer }
+        : null;
+
+    const highestRisk =
+      b20Tokens
+        .filter((t) => t.analysis?.riskScore !== null)
+        .sort((a, b) => (b.analysis?.riskScore ?? 0) - (a.analysis?.riskScore ?? 0))[0] ?? null;
+
+    return {
+      totalB20Tokens,
+      averageConfidence,
+      highestConfidence,
+      newestB20,
+      detectedToday,
+      detectedHour,
+      topCreator,
+      highestRisk,
+    };
   }
 }
 

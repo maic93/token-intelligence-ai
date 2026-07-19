@@ -18,6 +18,8 @@ model Token {
   decimals        Int
   totalSupply     String
   metadataConfidence Int       @default(100)
+  isB20           Boolean         @default(false)
+  b20Confidence   Int             @default(0)
   discoveredAt    DateTime        @default(now())
   blockNumber     BigInt
   blockTimestamp  DateTime
@@ -34,6 +36,7 @@ model Token {
   @@index([symbol])
   @@index([deployer])
   @@index([blockNumber])
+  @@index([isB20, b20Confidence])
   @@map("tokens")
 }
 

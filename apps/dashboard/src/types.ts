@@ -255,6 +255,28 @@ export interface AlertMessage {
   event: WatchEvent;
 }
 
+export interface B20TokenData extends TokenData {
+  isB20: boolean;
+  b20Confidence: number;
+}
+
+export interface B20AnalyticsData {
+  totalB20Tokens: number;
+  averageConfidence: number;
+  highestConfidence: number;
+  newestB20: B20TokenData | null;
+  detectedToday: number;
+  detectedHour: number;
+  topCreator: { deployer: string; count: number } | null;
+  highestRisk: B20TokenData | null;
+}
+
+export interface B20ListResponse {
+  data: B20TokenData[];
+  analytics: B20AnalyticsData;
+  pagination: { page: number; limit: number };
+}
+
 export interface AlertItem {
   id: string;
   message: string;

@@ -178,6 +178,84 @@ The validated metadata and confidence score are stored alongside the token in Po
 
 ---
 
+## B20 Detection Engine
+
+### Overview
+
+The B20 Detection Engine is a **heuristic classifier** that identifies probable B20-related tokens from indexed Base deployments. It does **not** use an official B20 API or registry — all classifications are based on weighted signals from on-chain metadata.
+
+### Classification Pipeline
+
+```
+  ┌──────────────┐
+  │  Token Created│
+  └──────┬───────┘
+         │
+         ▼
+  ┌──────────────────────────────────┐
+  │  Name Keyword Scan               │
+  │  B20 (+30), Base20 (+25),        │
+  │  BTC (+20), SATS (+20),          │
+  │  Ordinal (+15), Rune (+15),      │
+  │  Inscribe (+10), Block (+5)      │
+  └──────┬───────────────────────────┘
+         │
+         ▼
+  ┌──────────────────────────────────┐
+  │  Symbol Keyword Scan             │
+  │  B20 (+35), SATS (+25),          │
+  │  BTC (+25), RUNE (+20)           │
+  └──────┬───────────────────────────┘
+         │
+         ▼
+  ┌──────────────────────────────────┐
+  │  Metadata Confidence Boost       │
+  │  >=90 (+10), >=70 (+5)           │
+  └──────┬───────────────────────────┘
+         │
+         ▼
+  ┌──────────────────────────────────┐
+  │  Recent Deployment Boost         │
+  │  <24h old (+10)                  │
+  └──────┬───────────────────────────┘
+         │
+         ▼
+  ┌──────────────────────────────────┐
+  │  Threshold Check                 │
+  │  >=30 → isB20 = true             │
+  │  <30  → isB20 = false            │
+  └──────────────────────────────────┘
+```
+
+### Confidence Score
+
+| Range  | Badge | Interpretation                                                          |
+| ------ | ----- | ----------------------------------------------------------------------- |
+| 90–100 | 🟢    | Strong B20 signals — multiple keyword matches, high metadata confidence |
+| 70–89  | 🟡    | Moderate B20 signals — some keywords present                            |
+| <70    | ⚪    | Weak B20 signals — minimal keyword overlap                              |
+
+### Known Limitations
+
+- **Heuristic only** — This is not an official B20 registry. Tokens may be false positives (matched by keyword coincidence) or false negatives (genuine B20 tokens without matching keywords).
+- **No on-chain B20 verification** — The engine does not verify B20 protocol compatibility. It only analyzes metadata strings.
+- **Keyword bias** — Tokens with names like "Bitcoin Block" will score higher regardless of actual B20 relevance.
+- **Single chain** — Currently only indexes Base chain tokens.
+- **Confidence ≠ quality** — A high B20 confidence score does not imply the token is safe or legitimate. Always verify independently.
+
+### API Endpoint
+
+`GET /api/b20` — Returns paginated B20 token list with analytics summary.
+
+| Param           | Type | Default           | Description                                                   |
+| --------------- | ---- | ----------------- | ------------------------------------------------------------- |
+| `page`          | int  | `1`               | Page number                                                   |
+| `limit`         | int  | `20`              | Items per page (max 100)                                      |
+| `minConfidence` | int  | —                 | Minimum B20 confidence filter (0–100)                         |
+| `sort`          | enum | `confidence_desc` | Sort: `confidence_desc`, `confidence_asc`, `newest`, `oldest` |
+
+---
+
 ## Tech Stack
 
 | Component     | Technology                                                  |

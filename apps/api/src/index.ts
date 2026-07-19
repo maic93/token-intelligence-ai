@@ -21,6 +21,7 @@ import { deployersRouter } from './routes/deployers.js';
 import { platformAnalyticsRouter } from './routes/platform-analytics.js';
 import { searchRouter } from './routes/search.js';
 import { watchRouter } from './routes/watch.js';
+import { b20Router } from './routes/b20.js';
 import { errorHandler } from './middleware/error-handler.js';
 import { requestLogger } from './middleware/request-logger.js';
 import { requestIdMiddleware } from './middleware/request-id.js';
@@ -72,6 +73,7 @@ app.use('/api/platform-analytics', platformAnalyticsRouter);
 app.use('/api/deployers', deployersRouter);
 app.use('/api/analytics', analyticsRouter);
 app.use('/api/watch', watchRouter);
+app.use('/api/b20', b20Router);
 
 if (config.NODE_ENV === 'production') {
   const dashboardPath = path.resolve(import.meta.dirname, '../../dashboard/dist');

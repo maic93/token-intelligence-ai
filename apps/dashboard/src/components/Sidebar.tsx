@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { LayoutDashboard, Search, BarChart3, Link2, Settings, X } from 'lucide-react';
+import { LayoutDashboard, Search, BarChart3, Link2, Settings, X, Shield } from 'lucide-react';
 
 interface SidebarProps {
   activeView: string;
@@ -11,6 +11,7 @@ interface SidebarProps {
 const navItems = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { id: 'tokens', label: 'Tokens', icon: Search },
+  { id: 'b20', label: 'B20 Intelligence', icon: Shield },
   { id: 'analytics', label: 'Analytics', icon: BarChart3 },
   { id: 'chains', label: 'Chains', icon: Link2 },
   { id: 'settings', label: 'Settings', icon: Settings },

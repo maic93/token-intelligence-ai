@@ -14,6 +14,8 @@ const baseToken: Token = {
   decimals: 18,
   totalSupply: '1000000000000000000000000',
   metadataConfidence: 100,
+  isB20: false,
+  b20Confidence: 0,
   discoveredAt: new Date(),
   blockNumber: 1000n,
   blockTimestamp: new Date(),
