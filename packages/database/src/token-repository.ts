@@ -1,5 +1,5 @@
 import { PrismaClient, Prisma } from '@prisma/client';
-import type { Token } from '@prisma/client';
+import type { Token, DeployerAnalytics } from '@prisma/client';
 import type { ChainName } from '@token-intelligence-ai/blockchain';
 
 export interface CreateTokenInput {
@@ -17,6 +17,8 @@ export interface CreateTokenInput {
   metadataConfidence: number;
   isB20: boolean;
   b20Confidence: number;
+  deployerReputation?: number;
+  deployerGrade?: string;
 }
 
 export interface ListTokensOptions {
@@ -84,6 +86,8 @@ export class TokenRepository {
         metadataConfidence: input.metadataConfidence,
         isB20: input.isB20,
         b20Confidence: input.b20Confidence,
+        deployerReputation: input.deployerReputation ?? 0,
+        deployerGrade: input.deployerGrade ?? 'Unknown',
         blockNumber: input.blockNumber,
         blockTimestamp: input.blockTimestamp,
         transactionHash: input.transactionHash,
@@ -361,6 +365,230 @@ export class TokenRepository {
 
     if (items.length > limit) items.pop();
     return items;
+  }
+
+  async getDeployerAnalytics(wallet: string): Promise<DeployerAnalytics | null> {
+    return this.prisma.deployerAnalytics.findUnique({
+      where: { wallet: wallet.toLowerCase() },
+    });
+  }
+
+  async computeDeployerAnalytics(
+    wallet: string,
+    chain?: ChainName,
+  ): Promise<{
+    tokensCreated: number;
+    highRiskTokens: number;
+    mediumRiskTokens: number;
+    lowRiskTokens: number;
+    avgRiskScore: number | null;
+    avgMetadataConfidence: number;
+    avgB20Confidence: number;
+    firstSeen: Date | null;
+    lastSeen: Date | null;
+    uniqueSymbols: number;
+    duplicateSymbols: number;
+    uniqueNames: number;
+    duplicateNames: number;
+    deploymentSpanDays: number;
+  }> {
+    const where: Prisma.TokenWhereInput = {
+      deployer: wallet.toLowerCase(),
+    };
+    if (chain) where.chain = chain;
+
+    const tokens = await this.prisma.token.findMany({
+      where,
+      orderBy: { discoveredAt: 'asc' },
+      include: {
+        analysis: { select: { riskScore: true, riskLevel: true } },
+      },
+    });
+
+    const totalTokens = tokens.length;
+    if (totalTokens === 0) {
+      return {
+        tokensCreated: 0,
+        highRiskTokens: 0,
+        mediumRiskTokens: 0,
+        lowRiskTokens: 0,
+        avgRiskScore: null,
+        avgMetadataConfidence: 0,
+        avgB20Confidence: 0,
+        firstSeen: null,
+        lastSeen: null,
+        uniqueSymbols: 0,
+        duplicateSymbols: 0,
+        uniqueNames: 0,
+        duplicateNames: 0,
+        deploymentSpanDays: 0,
+      };
+    }
+
+    let highRisk = 0;
+    let mediumRisk = 0;
+    let lowRisk = 0;
+    let totalRiskScore = 0;
+    let riskCount = 0;
+    let totalMetaConf = 0;
+    let totalB20Conf = 0;
+
+    const symbolSet = new Set<string>();
+    const nameSet = new Set<string>();
+    let duplicateSymbolCount = 0;
+    let duplicateNameCount = 0;
+    const seenSymbols = new Map<string, number>();
+    const seenNames = new Map<string, number>();
+
+    for (const t of tokens) {
+      totalMetaConf += t.metadataConfidence;
+      totalB20Conf += t.b20Confidence;
+
+      const sym = t.symbol.toLowerCase();
+      const existingSymbol = seenSymbols.get(sym) || 0;
+      seenSymbols.set(sym, existingSymbol + 1);
+      symbolSet.add(sym);
+
+      const nm = t.name.toLowerCase();
+      const existingName = seenNames.get(nm) || 0;
+      seenNames.set(nm, existingName + 1);
+      nameSet.add(nm);
+
+      if (t.analysis) {
+        totalRiskScore += t.analysis.riskScore;
+        riskCount++;
+        if (t.analysis.riskLevel === 'HIGH' || t.analysis.riskLevel === 'CRITICAL') {
+          highRisk++;
+        } else if (t.analysis.riskLevel === 'MEDIUM') {
+          mediumRisk++;
+        } else {
+          lowRisk++;
+        }
+      }
+    }
+
+    for (const count of seenSymbols.values()) {
+      if (count > 1) duplicateSymbolCount += count - 1;
+    }
+    for (const count of seenNames.values()) {
+      if (count > 1) duplicateNameCount += count - 1;
+    }
+
+    const firstSeen = tokens[0].discoveredAt;
+    const lastSeen = tokens[tokens.length - 1].discoveredAt;
+    const spanMs = lastSeen.getTime() - firstSeen.getTime();
+    const deploymentSpanDays = spanMs / (1000 * 60 * 60 * 24);
+
+    return {
+      tokensCreated: totalTokens,
+      highRiskTokens: highRisk,
+      mediumRiskTokens: mediumRisk,
+      lowRiskTokens: lowRisk,
+      avgRiskScore: riskCount > 0 ? Math.round(totalRiskScore / riskCount) : null,
+      avgMetadataConfidence: Math.round(totalMetaConf / totalTokens),
+      avgB20Confidence: Math.round(totalB20Conf / totalTokens),
+      firstSeen,
+      lastSeen,
+      uniqueSymbols: symbolSet.size,
+      duplicateSymbols: duplicateSymbolCount,
+      uniqueNames: nameSet.size,
+      duplicateNames: duplicateNameCount,
+      deploymentSpanDays,
+    };
+  }
+
+  async upsertDeployerAnalytics(
+    wallet: string,
+    reputationScore: number,
+    reputationGrade: string,
+    chain?: ChainName,
+  ): Promise<DeployerAnalytics> {
+    const stats = await this.computeDeployerAnalytics(wallet, chain);
+
+    return this.prisma.deployerAnalytics.upsert({
+      where: { wallet: wallet.toLowerCase() },
+      create: {
+        wallet: wallet.toLowerCase(),
+        tokensCreated: stats.tokensCreated,
+        highRiskTokens: stats.highRiskTokens,
+        mediumRiskTokens: stats.mediumRiskTokens,
+        lowRiskTokens: stats.lowRiskTokens,
+        avgRiskScore: stats.avgRiskScore,
+        avgMetadataConfidence: stats.avgMetadataConfidence,
+        avgB20Confidence: stats.avgB20Confidence,
+        firstSeen: stats.firstSeen,
+        lastSeen: stats.lastSeen,
+        uniqueSymbols: stats.uniqueSymbols,
+        reputationScore,
+        reputationGrade,
+      },
+      update: {
+        tokensCreated: stats.tokensCreated,
+        highRiskTokens: stats.highRiskTokens,
+        mediumRiskTokens: stats.mediumRiskTokens,
+        lowRiskTokens: stats.lowRiskTokens,
+        avgRiskScore: stats.avgRiskScore,
+        avgMetadataConfidence: stats.avgMetadataConfidence,
+        avgB20Confidence: stats.avgB20Confidence,
+        firstSeen: stats.firstSeen,
+        lastSeen: stats.lastSeen,
+        uniqueSymbols: stats.uniqueSymbols,
+        reputationScore,
+        reputationGrade,
+      },
+    });
+  }
+
+  async listTopDeployers(limit = 10): Promise<DeployerAnalytics[]> {
+    return this.prisma.deployerAnalytics.findMany({
+      orderBy: { reputationScore: 'desc' },
+      take: limit,
+    });
+  }
+
+  async listWorstDeployers(limit = 10): Promise<DeployerAnalytics[]> {
+    return this.prisma.deployerAnalytics.findMany({
+      orderBy: { reputationScore: 'asc' },
+      take: limit,
+    });
+  }
+
+  async getDeployerOverview(): Promise<{
+    averageCreatorReputation: number;
+    worstCreator: { wallet: string; score: number } | null;
+    bestCreator: { wallet: string; score: number } | null;
+    repeatDeployers: number;
+    totalDeployers: number;
+  }> {
+    const all = await this.prisma.deployerAnalytics.findMany({
+      select: { wallet: true, reputationScore: true },
+    });
+
+    if (all.length === 0) {
+      return {
+        averageCreatorReputation: 0,
+        worstCreator: null,
+        bestCreator: null,
+        repeatDeployers: 0,
+        totalDeployers: 0,
+      };
+    }
+
+    const totalScore = all.reduce((s, d) => s + d.reputationScore, 0);
+    const best = all.reduce((prev, curr) =>
+      curr.reputationScore > prev.reputationScore ? curr : prev,
+    );
+    const worst = all.reduce((prev, curr) =>
+      curr.reputationScore < prev.reputationScore ? curr : prev,
+    );
+
+    return {
+      averageCreatorReputation: Math.round(totalScore / all.length),
+      worstCreator: { wallet: worst.wallet, score: worst.reputationScore },
+      bestCreator: { wallet: best.wallet, score: best.reputationScore },
+      repeatDeployers: all.filter((d) => d.reputationScore > 0).length,
+      totalDeployers: all.length,
+    };
   }
 
   async getB20Analytics(): Promise<B20Analytics> {

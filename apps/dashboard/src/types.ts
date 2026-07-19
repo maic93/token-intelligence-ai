@@ -8,6 +8,8 @@ export interface TokenData {
   totalSupply: string;
   metadataConfidence: number;
   deployer: string;
+  deployerReputation?: number;
+  deployerGrade?: string;
   blockNumber: string;
   blockTimestamp: string;
   transactionHash: string;
@@ -275,6 +277,76 @@ export interface B20ListResponse {
   data: B20TokenData[];
   analytics: B20AnalyticsData;
   pagination: { page: number; limit: number };
+}
+
+export interface DeployerSummaryItem {
+  wallet: string;
+  tokensCreated: number;
+  reputationScore: number;
+  reputationGrade: string;
+  avgRiskScore: number | null;
+  avgMetadataConfidence: number;
+  avgB20Confidence: number;
+  firstSeen: string | null;
+  lastSeen: string | null;
+}
+
+export interface DeployerOverview {
+  averageCreatorReputation: number;
+  worstCreator: { wallet: string; score: number } | null;
+  bestCreator: { wallet: string; score: number } | null;
+  repeatDeployers: number;
+  totalDeployers: number;
+}
+
+export interface DeployerListResponse {
+  top: DeployerSummaryItem[];
+  worst: DeployerSummaryItem[];
+  overview: DeployerOverview;
+}
+
+export interface DeployerTokenDetail {
+  contractAddress: string;
+  chain: string;
+  tokenName: string;
+  tokenSymbol: string;
+  blockNumber: string;
+  blockTimestamp: string;
+  riskScore: number | null;
+  riskLevel: string | null;
+  b20Confidence: number;
+  isB20: boolean;
+}
+
+export interface DeployerDetailData {
+  deployer: string;
+  reputation: {
+    score: number;
+    grade: string;
+    reasons: string[];
+  };
+  totalContracts: number;
+  chains: string[];
+  firstDeployment: string | null;
+  latestDeployment: string | null;
+  averageRisk: number | null;
+  b20Tokens: number;
+  analytics: {
+    highRisk: number;
+    mediumRisk: number;
+    lowRisk: number;
+    avgRiskScore: number | null;
+    avgMetadataConfidence: number;
+    avgB20Confidence: number;
+    uniqueSymbols: number;
+    firstSeen: string | null;
+    lastSeen: string | null;
+  };
+  tokens: DeployerTokenDetail[];
+}
+
+export interface DeployerDetailResponse {
+  data: DeployerDetailData;
 }
 
 export interface AlertItem {

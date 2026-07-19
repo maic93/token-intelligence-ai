@@ -5,6 +5,12 @@ export * from './rules.js';
 export * from './detectors.js';
 export { classifyB20 } from './b20-classifier.js';
 export type { B20Classification } from './b20-classifier.js';
+export { calculateDeployerReputation } from './deployer-reputation.js';
+export type {
+  DeployerMetrics,
+  DeployerReputation,
+  ReputationGrade,
+} from './deployer-reputation.js';
 export type {
   RiskLevel,
   RiskFactor,

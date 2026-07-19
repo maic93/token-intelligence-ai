@@ -36,6 +36,8 @@ Token Intelligence AI is an open-source platform that continuously indexes suppo
 - **Advanced Search** — Partial text search across name/symbol/address/deployer with chain, risk, score, date filters, cursor-based pagination, 6 sort modes
 - **Platform Analytics** — Aggregated stats, per-chain breakdown, risk distribution, top deployers, auto-refreshing dashboard cards and charts
 - **Watchlists & Alerts** — Anonymous browser-based watchlists via localStorage, real-time WebSocket alerts for watched tokens, floating notifications with auto-dismiss queue, bell icon with unread counter and dropdown
+- **B20 Detection Engine** — Heuristic classifier with weighted keyword signals, metadata confidence boost, and recency boost
+- **Deployer Intelligence Engine** — Wallet reputation scoring (0–100, 5 grades), deployer analytics, risk distribution, metadata quality, B20 history
 - **Metadata Validation Pipeline** — Strict ERC-20 metadata validation with rejection logging, confidence scoring (0–100), and sanitization of names/symbols
 
 ---
@@ -817,6 +819,119 @@ Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduc
 5. Open a Pull Request
 
 ---
+
+## Deployer Intelligence Engine
+
+The Deployer Intelligence Engine builds a **reputation score** for every wallet that has deployed tokens on the platform. Instead of treating all deployers equally, the engine analyzes on-chain behavior to produce a deterministic reputation score (0–100) and grade.
+
+### Reputation Pipeline
+
+```
+New Token Indexed
+        │
+        ▼
+Compute Deployer Analytics
+├── total tokens created
+├── risk distribution (low / medium / high)
+├── average risk score
+├── average metadata confidence
+├── average B20 confidence
+├── unique names / symbols (variety)
+├── duplicate names / symbols
+└── deployment span (time between first and last)
+        │
+        ▼
+Calculate Deployer Reputation
+├── Start at neutral (50)
+├── + for high metadata confidence
+├── + for many successful low-risk tokens
+├── + for low average risk scores
+├── + for diverse naming / symbols
+├── + for established history (≥10 tokens, >30 days span)
+├── − for low metadata confidence
+├── − for majority high-risk tokens
+├── − for above-average risk scores
+├── − for duplicate names / symbols
+└── − for suspiciously rapid deployments
+        │
+        ▼
+Grade Assignment
+├──  0–19  → 🔴 Dangerous
+├── 20–39  → 🟠 Poor
+├── 40–59  → 🟡 Average
+├── 60–79  → 🟢 Good
+└── 80–100 → 🟢 Excellent
+        │
+        ▼
+Store on Token + DeployerAnalytics table
+```
+
+### Scoring Weights
+
+| Signal                          | Adjustment | Condition                    |
+| ------------------------------- | ---------- | ---------------------------- |
+| High metadata confidence        | +15        | avg ≥ 90                     |
+| Good metadata confidence        | +8         | avg ≥ 70                     |
+| Low metadata confidence         | −8         | avg < 50                     |
+| Many successful low-risk tokens | +15        | successRate ≥ 80%, ≥5 tokens |
+| Mostly successful tokens        | +8         | successRate ≥ 60%, ≥3 tokens |
+| Majority high-risk              | −15        | rugRate > 50%, ≥3 tokens     |
+| Many high-risk                  | −8         | rugRate > 30%, ≥3 tokens     |
+| Consistently low risk scores    | +10        | avgRisk ≤ 20                 |
+| Mostly low risk scores          | +5         | avgRisk ≤ 40                 |
+| Consistently high risk scores   | −15        | avgRisk ≥ 80                 |
+| Above average risk scores       | −8         | avgRisk ≥ 60                 |
+| Diverse token names             | +5         | nameVariety ≥ 70%            |
+| Duplicate names                 | −5         | nameVariety < 30%            |
+| Diverse token symbols           | +5         | symbolVariety ≥ 80%          |
+| Duplicate symbols               | −5         | symbolVariety < 30%          |
+| Suspicious rapid deployments    | −15        | ≥5 tokens, span < 1 day      |
+| Very rapid deployments          | −10        | ≥3 tokens, span < 0.5 days   |
+| Established deployer            | +10        | ≥10 tokens, span > 30 days   |
+
+### API Endpoints
+
+**GET /api/deployers** — List top and worst deployers
+
+```json
+{
+  "top": [{ "wallet": "0x...", "tokensCreated": 38, "reputationScore": 92, "reputationGrade": "Excellent", ... }],
+  "worst": [{ "wallet": "0x...", "tokensCreated": 17, "reputationScore": 12, "reputationGrade": "Dangerous", ... }],
+  "overview": { "averageCreatorReputation": 58, "bestCreator": {...}, "worstCreator": {...}, "repeatDeployers": 12, "totalDeployers": 45 }
+}
+```
+
+**GET /api/deployers/:wallet** — Detailed deployer profile
+
+```json
+{
+  "data": {
+    "deployer": "0x...",
+    "reputation": { "score": 85, "grade": "Excellent", "reasons": ["high metadata confidence", ...] },
+    "totalContracts": 38,
+    "chains": ["base", "ethereum"],
+    "b20Tokens": 3,
+    "analytics": { "highRisk": 2, "mediumRisk": 5, "lowRisk": 31, "avgRiskScore": 22, ... },
+    "tokens": [...]
+  }
+}
+```
+
+### Dashboard Features
+
+- **Deployers page**: Sidebar navigation → list of top/worst deployers with reputation scores, toggle view
+- **Wallet Intelligence modal**: Click any deployer → reputation grade with icon, score, factors, risk distribution, metadata quality, B20 activity, timeline, explorer links, recent token list
+- **Token cards**: Creator line shows star rating (★) and grade text with color coding
+- **Analytics page widgets**: Average creator reputation, best/worst creator, repeat deployers count
+- **Grade highlighting**: 🔴 Dangerous, 🟠 Poor, 🟡 Average, 🟢 Good, 🟢 Excellent (on token cards and deployer list)
+
+### Known Limitations
+
+- Reputation is **deterministic** — no ML or external signals
+- Newly indexed tokens update reputation only on creation (not retroactively)
+- Risk distribution is approximate until analysis runs on each token
+- Cross-chain reputation is computed per-chain (not merged across all chains)
+- The system does not detect wash trading, Sybil attacks, or off-chain behavior
 
 ## Roadmap
 

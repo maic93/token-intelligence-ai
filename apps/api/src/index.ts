@@ -17,7 +17,7 @@ import { chainsRouter } from './routes/chains.js';
 import { metricsRouter, trackRequest, initMetrics } from './routes/metrics.js';
 import { analysisRouter } from './routes/analysis.js';
 import { analyticsRouter, initAnalytics } from './routes/analytics.js';
-import { deployersRouter } from './routes/deployers.js';
+import { deployersRouter, invalidateDeployerCache } from './routes/deployers.js';
 import { platformAnalyticsRouter } from './routes/platform-analytics.js';
 import { searchRouter } from './routes/search.js';
 import { watchRouter } from './routes/watch.js';
@@ -108,6 +108,7 @@ async function startWatchSubscriber(): Promise<void> {
       const event = JSON.parse(message) as { eventType: string };
       if (event.eventType === 'NEW_TOKEN') {
         invalidateStatsCache();
+        invalidateDeployerCache();
       }
       if (!wsServer) return;
       const payload = JSON.stringify({ type: 'WATCH_EVENT', event });

@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { fetchPlatformAnalytics } from '../api';
+import { fetchPlatformAnalytics, fetchDeployers } from '../api';
 import { shortAddress } from '../utils';
-import { Database, Shield, TrendingUp, Calendar, BarChart3, User } from 'lucide-react';
+import { Database, Shield, TrendingUp, Calendar, BarChart3, User, Star, Users } from 'lucide-react';
 
 interface AnalyticsCard {
   icon: React.ReactNode;
@@ -15,14 +15,23 @@ export function AnalyticsCards() {
   const [data, setData] = useState<
     Awaited<ReturnType<typeof fetchPlatformAnalytics>>['data'] | null
   >(null);
+  const [deployerOverview, setDeployerOverview] = useState<{
+    averageCreatorReputation: number;
+    worstCreator: { wallet: string; score: number } | null;
+    bestCreator: { wallet: string; score: number } | null;
+    repeatDeployers: number;
+  } | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let active = true;
     async function load() {
       try {
-        const res = await fetchPlatformAnalytics();
-        if (active) setData(res.data);
+        const [platRes, depRes] = await Promise.all([fetchPlatformAnalytics(), fetchDeployers()]);
+        if (active) {
+          setData(platRes.data);
+          setDeployerOverview(depRes.overview);
+        }
       } catch {
         // ignore
       } finally {
@@ -40,7 +49,7 @@ export function AnalyticsCards() {
   if (loading && !data) {
     return (
       <div className="stats-grid">
-        {Array.from({ length: 6 }).map((_, i) => (
+        {Array.from({ length: 8 }).map((_, i) => (
           <div key={i} className="skeleton-stat">
             <div className="skeleton skeleton-stat-icon" />
             <div className="skeleton-stat-body">
@@ -96,6 +105,18 @@ export function AnalyticsCards() {
       label: 'Top Deployer',
       value: data.topDeployers[0] ? shortAddress(data.topDeployers[0].deployer) : '—',
       color: 'green',
+    },
+    {
+      icon: <Star size={18} />,
+      label: 'Avg Creator Reputation',
+      value: deployerOverview ? `${deployerOverview.averageCreatorReputation}/100` : '—',
+      color: 'accent',
+    },
+    {
+      icon: <Users size={18} />,
+      label: 'Repeat Deployers',
+      value: deployerOverview ? String(deployerOverview.repeatDeployers) : '—',
+      color: 'orange',
     },
   ];
 
