@@ -14,6 +14,7 @@ export interface CreateTokenInput {
   blockNumber: bigint;
   blockTimestamp: Date;
   transactionHash: string;
+  metadataConfidence: number;
 }
 
 export interface ListTokensOptions {
@@ -60,6 +61,7 @@ export class TokenRepository {
         symbol: input.symbol,
         decimals: input.decimals,
         totalSupply: input.totalSupply,
+        metadataConfidence: input.metadataConfidence,
         blockNumber: input.blockNumber,
         blockTimestamp: input.blockTimestamp,
         transactionHash: input.transactionHash,

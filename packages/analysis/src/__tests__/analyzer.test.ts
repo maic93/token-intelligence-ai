@@ -13,6 +13,7 @@ const baseToken: Token = {
   symbol: 'TEST',
   decimals: 18,
   totalSupply: '1000000000000000000000000',
+  metadataConfidence: 100,
   discoveredAt: new Date(),
   blockNumber: 1000n,
   blockTimestamp: new Date(),
