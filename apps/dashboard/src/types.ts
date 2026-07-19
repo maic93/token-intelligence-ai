@@ -6,6 +6,7 @@ export interface TokenData {
   tokenSymbol: string;
   decimals: number;
   totalSupply: string;
+  metadataConfidence: number;
   deployer: string;
   blockNumber: string;
   blockTimestamp: string;

@@ -47,6 +47,7 @@ function formatToken(token: TokenWithAnalysis) {
     tokenSymbol: token.symbol,
     decimals: token.decimals,
     totalSupply: token.totalSupply,
+    metadataConfidence: token.metadataConfidence,
     deployer: token.deployer,
     blockNumber: token.blockNumber.toString(),
     blockTimestamp: token.blockTimestamp.toISOString(),

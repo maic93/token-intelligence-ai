@@ -4,9 +4,10 @@ import type { ChainConfig } from '@token-intelligence-ai/blockchain';
 import { analyze } from '@token-intelligence-ai/analysis';
 import type { RpcClient, RpcTransaction } from './rpc.js';
 import { detectErc20 } from './erc20.js';
+import { validateTokenMetadata } from './erc20-validator.js';
 import { publishWatchEvent } from './watch-publisher.js';
 
-const SHORT_INPUT_LENGTH = 10; // 4-byte selector (0x + 8 hex) = 10 chars
+const SHORT_INPUT_LENGTH = 10;
 
 export class BlockProcessor {
   constructor(
@@ -69,40 +70,64 @@ export class BlockProcessor {
     const exists = await this.tokenRepo.tokenExists(this.chain.name, contractAddress);
     if (exists) return;
 
-    const metadata = await detectErc20(this.rpc, contractAddress);
-    if (!metadata) return;
+    const result = await detectErc20(this.rpc, contractAddress);
+    if (!result.metadata) {
+      this.log.info('Rejected candidate', {
+        contract: contractAddress,
+        reason: result.reason || 'not ERC20',
+      });
+      return;
+    }
+
+    const validation = validateTokenMetadata(result.metadata);
+    if (!validation.valid) {
+      this.log.info('Rejected candidate', {
+        contract: contractAddress,
+        reason: validation.reason || 'helper contract',
+      });
+      return;
+    }
+
+    const metadataConfidence = result.metadataConfidence;
 
     const token = await this.tokenRepo.createToken({
       chain: this.chain.name,
       chainId: this.chain.chainId,
       contractAddress,
       deployer: tx.from.toLowerCase(),
-      name: metadata.name,
-      symbol: metadata.symbol,
-      decimals: metadata.decimals,
-      totalSupply: metadata.totalSupply,
+      name: result.metadata.name,
+      symbol: result.metadata.symbol,
+      decimals: result.metadata.decimals,
+      totalSupply: result.metadata.totalSupply,
       blockNumber,
       blockTimestamp,
       transactionHash: tx.hash,
+      metadataConfidence,
     });
 
     this.log.info('New token discovered', {
       chain: this.chain.name,
       contractAddress,
-      symbol: metadata.symbol,
-      name: metadata.name,
+      symbol: result.metadata.symbol,
+      name: result.metadata.name,
       tokenId: token.id,
+      metadataConfidence,
     });
 
     await publishWatchEvent(
       token.id,
       'NEW_TOKEN',
-      `New token ${metadata.name} (${metadata.symbol}) discovered on ${this.chain.displayName}`,
-      { chain: this.chain.name, contractAddress, name: metadata.name, symbol: metadata.symbol },
+      `New token ${result.metadata.name} (${result.metadata.symbol}) discovered on ${this.chain.displayName}`,
+      {
+        chain: this.chain.name,
+        contractAddress,
+        name: result.metadata.name,
+        symbol: result.metadata.symbol,
+      },
     );
 
     try {
-      const result = await analyze(token, {
+      const analysisResult = await analyze(token, {
         currentBlockNumber: blockNumber,
         rpc: {
           ethCall: (to: string, data: string) => this.rpc.ethCall(to, data),
@@ -112,18 +137,18 @@ export class BlockProcessor {
         getDeployerCount: (deployer: string, chain: string) =>
           this.analysisRepo.getDeployerTokenCount(deployer, chain),
       });
-      await this.analysisRepo.createAnalysis(token.id, result);
+      await this.analysisRepo.createAnalysis(token.id, analysisResult);
 
-      if (result.riskLevel === 'HIGH' || result.riskLevel === 'CRITICAL') {
+      if (analysisResult.riskLevel === 'HIGH' || analysisResult.riskLevel === 'CRITICAL') {
         await publishWatchEvent(
           token.id,
           'HIGH_RISK',
-          `${metadata.name} (${metadata.symbol}) flagged as ${result.riskLevel} risk (score: ${result.riskScore}/100)`,
+          `${result.metadata.name} (${result.metadata.symbol}) flagged as ${analysisResult.riskLevel} risk (score: ${analysisResult.riskScore}/100)`,
           {
             chain: this.chain.name,
             contractAddress,
-            riskScore: result.riskScore,
-            riskLevel: result.riskLevel,
+            riskScore: analysisResult.riskScore,
+            riskLevel: analysisResult.riskLevel,
           },
         );
       }

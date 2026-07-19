@@ -24,6 +24,18 @@ function scoreColor(score: number | null): string {
   return '#f87171';
 }
 
+function confidenceStars(confidence: number): string {
+  if (confidence >= 90) return '\u2605\u2605\u2605\u2605\u2605';
+  if (confidence >= 70) return '\u2605\u2605\u2605\u2605\u2606';
+  if (confidence >= 50) return '\u2605\u2605\u2605\u2606\u2606';
+  if (confidence >= 30) return '\u2605\u2605\u2606\u2606\u2606';
+  return '\u2605\u2606\u2606\u2606\u2606';
+}
+
+function confidenceTooltip(confidence: number): string {
+  return `Metadata Confidence ${confidence}%\nPassed all ERC20 validation checks.`;
+}
+
 function chainBadgeClass(chain: string): string {
   return `chain-badge-${chain}`;
 }
@@ -71,6 +83,10 @@ export function TokenCard({
       </div>
 
       <div className="token-name">{token.tokenName || 'Unnamed'}</div>
+
+      <div className="token-confidence" title={confidenceTooltip(token.metadataConfidence)}>
+        <span className="confidence-stars">{confidenceStars(token.metadataConfidence)}</span>
+      </div>
 
       <div className="token-address-row">
         <span className="token-address-text">{shortAddress(token.contractAddress)}</span>

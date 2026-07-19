@@ -36,6 +36,7 @@ Token Intelligence AI is an open-source platform that continuously indexes suppo
 - **Advanced Search** — Partial text search across name/symbol/address/deployer with chain, risk, score, date filters, cursor-based pagination, 6 sort modes
 - **Platform Analytics** — Aggregated stats, per-chain breakdown, risk distribution, top deployers, auto-refreshing dashboard cards and charts
 - **Watchlists & Alerts** — Anonymous browser-based watchlists via localStorage, real-time WebSocket alerts for watched tokens, floating notifications with auto-dismiss queue, bell icon with unread counter and dropdown
+- **Metadata Validation Pipeline** — Strict ERC-20 metadata validation with rejection logging, confidence scoring (0–100), and sanitization of names/symbols
 
 ---
 
@@ -96,8 +97,84 @@ _Screenshots will be added to `docs/screenshots/` in a future update._
               ┌───────┴─────────────────┴───────┐
               │        React Dashboard          │
               │   (Vite, WebSocket, Analytics)  │
-              └─────────────────────────────────┘
+               └─────────────────────────────────┘
 ```
+
+---
+
+## Metadata Validation Pipeline
+
+```
+  ┌──────────────┐
+  │  Contract    │
+  │  Deployment  │
+  └──────┬───────┘
+         │
+         ▼
+  ┌──────────────────────────────────┐
+  │  4/4 ABI Calls (RPC)            │
+  │  symbol, decimals, name,        │
+  │  totalSupply                    │
+  │  ▼ reject if any call fails     │
+  └──────┬───────────────────────────┘
+         │
+         ▼
+  ┌──────────────────────────────────┐
+  │  ABI Decoding                   │
+  │  bytes32 / dynamic string       │
+  │  ▼ reject on malformed ABI      │
+  └──────┬───────────────────────────┘
+         │
+         ▼
+  ┌──────────────────────────────────┐
+  │  String Sanitization            │
+  │  trim, NFKC, strip control/     │
+  │  zero-width / NULL bytes        │
+  └──────┬───────────────────────────┘
+         │
+         ▼
+  ┌──────────────────────────────────┐
+  │  Metadata Validation            │
+  │  name, symbol, decimals,        │
+  │  totalSupply rules              │
+  │  ▼ reject on invalid metadata   │
+  └──────┬───────────────────────────┘
+         │
+         ▼
+  ┌──────────────────────────────────┐
+  │  Confidence Score (0–100)       │
+  │  data quality deductions        │
+  └──────┬───────────────────────────┘
+         │
+         ▼
+  ┌──────────────────────────────────┐
+  │  PostgreSQL (Prisma)            │
+  │  stores metadataConfidence      │
+  └──────┬───────────────────────────┘
+         │
+         ▼
+  ┌──────────────────────────────────┐
+  │  REST API                       │
+  │  exposes metadataConfidence     │
+  └──────┬───────────────────────────┘
+         │
+         ▼
+  ┌──────────────────────────────────┐
+  │  Dashboard                      │
+  │  ★★★★★ star rating + tooltip   │
+  └──────────────────────────────────┘
+```
+
+Every discovered ERC-20 candidate passes through a strict validation pipeline before being persisted:
+
+1. **ERC-20 Detection** (`detectErc20`) — All 4 ABI calls (symbol, decimals, name, totalSupply) are required. If any call fails at the RPC level, the candidate is rejected with a logged reason.
+2. **ABI Decoding** — String fields are decoded from both `bytes32` and dynamic ABI encoding. Impossible offsets, impossible lengths, null bytes, and invalid UTF-8 return `null` instead of throwing.
+3. **String Sanitization** (`sanitizeString`) — NULL bytes, control characters (U+0000–U+001F), zero-width characters (U+200B–U+200D, U+FEFF), and DEL (U+007F) are stripped, whitespace is trimmed, and text is NFKC-normalized.
+4. **Metadata Validation** (`validateTokenMetadata`) — Validates name (max 128 chars, no NULL bytes, no replacement characters, <25% control chars), symbol (max 32 chars, not mostly binary), decimals (0–36 integer), and totalSupply (non-negative BigInt, ≤ 10^78). Helper contracts (tiny name, tiny symbol, 0 decimals) are rejected.
+5. **Confidence Scoring** (`metadataConfidence`, 0–100) — Deductions based on data quality: missing name (-30), zero totalSupply (-10), bytes32 symbol (-5), empty name response (-10).
+6. **Rejection Logging** — All rejected candidates are logged with `"Rejected candidate"` including the contract address and human-readable reason.
+
+The validated metadata and confidence score are stored alongside the token in PostgreSQL and exposed via the API as `metadataConfidence`.
 
 ---
 

@@ -17,6 +17,7 @@ model Token {
   symbol          String
   decimals        Int
   totalSupply     String
+  metadataConfidence Int       @default(100)
   discoveredAt    DateTime        @default(now())
   blockNumber     BigInt
   blockTimestamp  DateTime

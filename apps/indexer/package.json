@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "test": "vitest run",
     "dev": "node --loader ts-node/esm src/index.ts",
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js"
@@ -17,6 +18,7 @@
     "redis": "^4.6.0"
   },
   "devDependencies": {
-    "ts-node": "^10.9.2"
+    "ts-node": "^10.9.2",
+    "vitest": "^3.0.0"
   }
 }
