@@ -50,9 +50,13 @@ const MAX_ATTEMPTS = 5;
 const BASE_DELAY_MS = 1_000;
 const MAX_DELAY_MS = 30_000;
 const REQUEST_TIMEOUT_MS = 30_000;
+const MAX_RECEIPT_CONCURRENCY = 8;
+const BLOCK_CACHE_REFRESH_MS = 6_000;
 
 export class RpcClient {
   private nextId = 0;
+  private cachedLatestBlock: bigint | null = null;
+  private lastCacheRefresh = 0;
 
   constructor(
     private readonly url: string,
@@ -116,8 +120,15 @@ export class RpcClient {
   }
 
   async getLatestBlockNumber(): Promise<bigint> {
+    const now = Date.now();
+    if (this.cachedLatestBlock !== null && now - this.lastCacheRefresh < BLOCK_CACHE_REFRESH_MS) {
+      return this.cachedLatestBlock;
+    }
     const hex = await this.call<string>('eth_blockNumber', []);
-    return BigInt(hex);
+    const block = BigInt(hex);
+    this.cachedLatestBlock = block;
+    this.lastCacheRefresh = now;
+    return block;
   }
 
   async getBlock(blockNumber: bigint): Promise<RpcBlock> {
@@ -130,23 +141,26 @@ export class RpcClient {
   }
 
   async getTransactionReceipts(txHashes: string[]): Promise<(RpcTransactionReceipt | null)[]> {
-    const results: (RpcTransactionReceipt | null)[] = [];
-    const BATCH_SIZE = 3;
-    const DELAY_MS = 200;
+    const results: (RpcTransactionReceipt | null)[] = new Array(txHashes.length).fill(null);
+    let index = 0;
 
-    for (let offset = 0; offset < txHashes.length; offset += BATCH_SIZE) {
-      const batch = txHashes.slice(offset, offset + BATCH_SIZE);
-      const batchResults = await Promise.allSettled(
-        batch.map((hash) => this.getTransactionReceipt(hash)),
-      );
-      for (const r of batchResults) {
-        results.push(r.status === 'fulfilled' ? r.value : null);
-      }
-      if (offset + BATCH_SIZE < txHashes.length) {
-        await sleep(DELAY_MS);
+    async function worker(this: RpcClient): Promise<void> {
+      while (index < txHashes.length) {
+        const i = index++;
+        try {
+          results[i] = await this.getTransactionReceipt(txHashes[i]);
+        } catch {
+          // individual receipt failure, leave as null
+        }
       }
     }
 
+    const workers: Promise<void>[] = [];
+    const count = Math.min(MAX_RECEIPT_CONCURRENCY, txHashes.length);
+    for (let i = 0; i < count; i++) {
+      workers.push(worker.call(this));
+    }
+    await Promise.allSettled(workers);
     return results;
   }
 

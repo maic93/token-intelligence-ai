@@ -12,7 +12,7 @@ import { config } from './config.js';
 import { healthRouter } from './routes/health.js';
 import { readyRouter } from './routes/ready.js';
 import { tokensRouter } from './routes/tokens.js';
-import { statsRouter } from './routes/stats.js';
+import { statsRouter, invalidateStatsCache } from './routes/stats.js';
 import { chainsRouter } from './routes/chains.js';
 import { metricsRouter, trackRequest, initMetrics } from './routes/metrics.js';
 import { analysisRouter } from './routes/analysis.js';
@@ -103,8 +103,12 @@ async function startWatchSubscriber(): Promise<void> {
     watchSubscriber = redisClient.duplicate();
     await watchSubscriber.connect();
     await watchSubscriber.subscribe('watch:events', (message) => {
+      const event = JSON.parse(message) as { eventType: string };
+      if (event.eventType === 'NEW_TOKEN') {
+        invalidateStatsCache();
+      }
       if (!wsServer) return;
-      const payload = JSON.stringify({ type: 'WATCH_EVENT', event: JSON.parse(message) });
+      const payload = JSON.stringify({ type: 'WATCH_EVENT', event });
       for (const client of wsServer.clients) {
         if (client.readyState === 1) {
           client.send(payload);

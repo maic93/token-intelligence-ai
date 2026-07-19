@@ -6,6 +6,8 @@ import type { RpcClient, RpcTransaction } from './rpc.js';
 import { detectErc20 } from './erc20.js';
 import { publishWatchEvent } from './watch-publisher.js';
 
+const SHORT_INPUT_LENGTH = 10; // 4-byte selector (0x + 8 hex) = 10 chars
+
 export class BlockProcessor {
   constructor(
     private readonly chain: ChainConfig,
@@ -15,32 +17,31 @@ export class BlockProcessor {
     private readonly log: Logger,
   ) {}
 
+  private canCreateContract(tx: RpcTransaction): boolean {
+    if (tx.to === null) return true;
+    if (tx.input.length > SHORT_INPUT_LENGTH) return true;
+    return false;
+  }
+
   async processBlock(blockNumber: bigint): Promise<void> {
     const block = await this.rpc.getBlock(blockNumber);
     const blockTimestamp = new Date(parseInt(block.timestamp, 16) * 1000);
 
-    const totalTxs = block.transactions.length;
-
-    if (totalTxs > 0) {
-      this.log.info('ProcessBlock detail', {
-        block: blockNumber.toString(),
-        totalTransactions: totalTxs,
-      });
+    const deployable = block.transactions.filter((tx) => this.canCreateContract(tx));
+    if (deployable.length === 0) {
+      await this.tokenRepo.saveLastProcessedBlock(this.chain.name, blockNumber);
+      return;
     }
 
-    const receipts = await this.rpc.getTransactionReceipts(block.transactions.map((tx) => tx.hash));
+    const receipts = await this.rpc.getTransactionReceipts(deployable.map((tx) => tx.hash));
 
-    let contractDeployments = 0;
-
-    for (let i = 0; i < block.transactions.length; i++) {
-      const tx = block.transactions[i];
+    for (let i = 0; i < deployable.length; i++) {
+      const tx = deployable[i];
       const receipt = receipts[i];
 
       if (!receipt) continue;
       if (!receipt.contractAddress) continue;
       if (receipt.status !== '0x1') continue;
-
-      contractDeployments++;
 
       try {
         await this.processContractDeployment(tx, receipt, blockNumber, blockTimestamp);
@@ -55,14 +56,6 @@ export class BlockProcessor {
       }
     }
 
-    if (contractDeployments > 0) {
-      this.log.info('Block processed', {
-        block: blockNumber.toString(),
-        totalTransactions: totalTxs,
-        contractDeployments,
-      });
-    }
-
     await this.tokenRepo.saveLastProcessedBlock(this.chain.name, blockNumber);
   }
 
@@ -74,29 +67,10 @@ export class BlockProcessor {
   ): Promise<void> {
     const contractAddress = receipt.contractAddress!.toLowerCase();
     const exists = await this.tokenRepo.tokenExists(this.chain.name, contractAddress);
-    if (exists) {
-      return;
-    }
-
-    this.log.info('Contract deployed', {
-      contractAddress,
-      deployer: tx.from,
-      txHash: tx.hash,
-      block: blockNumber.toString(),
-    });
+    if (exists) return;
 
     const metadata = await detectErc20(this.rpc, contractAddress);
-    if (!metadata) {
-      this.log.info('Not an ERC20 token', { contractAddress });
-      return;
-    }
-
-    this.log.info('ERC20 validated, saving token', {
-      contractAddress,
-      name: metadata.name,
-      symbol: metadata.symbol,
-      decimals: metadata.decimals,
-    });
+    if (!metadata) return;
 
     const token = await this.tokenRepo.createToken({
       chain: this.chain.name,
@@ -112,11 +86,12 @@ export class BlockProcessor {
       transactionHash: tx.hash,
     });
 
-    this.log.info('Token saved to database', {
-      tokenId: token.id,
+    this.log.info('New token discovered', {
+      chain: this.chain.name,
       contractAddress,
       symbol: metadata.symbol,
       name: metadata.name,
+      tokenId: token.id,
     });
 
     await publishWatchEvent(
@@ -125,8 +100,6 @@ export class BlockProcessor {
       `New token ${metadata.name} (${metadata.symbol}) discovered on ${this.chain.displayName}`,
       { chain: this.chain.name, contractAddress, name: metadata.name, symbol: metadata.symbol },
     );
-
-    this.log.info('Watch event published', { tokenId: token.id, eventType: 'NEW_TOKEN' });
 
     try {
       const result = await analyze(token, {
@@ -140,11 +113,6 @@ export class BlockProcessor {
           this.analysisRepo.getDeployerTokenCount(deployer, chain),
       });
       await this.analysisRepo.createAnalysis(token.id, result);
-      this.log.info('Token analyzed', {
-        contractAddress,
-        riskScore: result.riskScore,
-        riskLevel: result.riskLevel,
-      });
 
       if (result.riskLevel === 'HIGH' || result.riskLevel === 'CRITICAL') {
         await publishWatchEvent(

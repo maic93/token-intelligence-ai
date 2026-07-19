@@ -1,7 +1,12 @@
 import { prisma, AnalysisRepository, TokenRepository } from '@token-intelligence-ai/database';
 import { createLogger } from '@token-intelligence-ai/shared';
 import type { Logger } from '@token-intelligence-ai/shared';
-import { getEnabledChains, type ChainConfig } from '@token-intelligence-ai/blockchain';
+import {
+  getEnabledChains,
+  loadChainConfig,
+  type ChainName,
+  type ChainConfig,
+} from '@token-intelligence-ai/blockchain';
 import { config } from './config.js';
 import { RpcClient } from './rpc.js';
 import { BlockProcessor } from './processor.js';
@@ -15,7 +20,6 @@ async function resolveStartBlock(
   rpc: RpcClient,
   chain: ChainConfig,
   startBlock: number,
-  backfillBlocks: number,
 ): Promise<bigint> {
   const lastBlock = await repo.getLastProcessedBlock(chain.name);
   if (lastBlock !== null) return lastBlock;
@@ -23,8 +27,8 @@ async function resolveStartBlock(
   if (startBlock > 0) return BigInt(startBlock);
 
   const latest = await rpc.getLatestBlockNumber();
-  const backfill = latest - BigInt(backfillBlocks);
-  return backfill > 0n ? backfill : 0n;
+  const nearLive = latest - 5n;
+  return nearLive > 0n ? nearLive : 0n;
 }
 
 async function runWorker(chain: ChainConfig): Promise<void> {
@@ -34,40 +38,49 @@ async function runWorker(chain: ChainConfig): Promise<void> {
   const rpc = new RpcClient(chain.rpcUrl, workerLog);
   const processor = new BlockProcessor(chain, rpc, tokenRepo, analysisRepo, workerLog);
 
-  const currentBlock = await resolveStartBlock(
-    tokenRepo,
-    rpc,
-    chain,
-    config.START_BLOCK,
-    config.BACKFILL_BLOCKS,
-  );
+  const currentBlock = await resolveStartBlock(tokenRepo, rpc, chain, config.START_BLOCK);
 
   workerLog.info('Worker starting', {
     chain: chain.name,
     chainId: chain.chainId,
     rpcUrl: chain.rpcUrl,
     startBlock: config.START_BLOCK,
-    backfillBlocks: config.BACKFILL_BLOCKS,
     pollIntervalMs: config.POLL_INTERVAL_MS,
     currentBlock: currentBlock.toString(),
   });
 
   let cursor = currentBlock;
+  let liveMode = false;
 
   while (!shuttingDown) {
     try {
       const latestBlock = await rpc.getLatestBlockNumber();
+      const remaining = latestBlock - cursor;
 
-      while (cursor < latestBlock && !shuttingDown) {
-        cursor += 1n;
-        await processor.processBlock(cursor);
-        workerLog.info('Block processed', {
-          chain: chain.name,
-          worker: chain.displayName,
+      if (!liveMode && remaining <= 100n) {
+        liveMode = true;
+        workerLog.info('Live mode entered', {
           block: cursor.toString(),
-          latest: latestBlock.toString(),
-          remaining: (latestBlock - cursor).toString(),
+          remaining: remaining.toString(),
         });
+      }
+
+      if (remaining > 0n) {
+        const isCatchUp = remaining > 100n;
+
+        while (cursor < latestBlock && !shuttingDown) {
+          cursor += 1n;
+          await processor.processBlock(cursor);
+          const newRemaining = latestBlock - cursor;
+
+          if (isCatchUp && newRemaining % 100n === 0n) {
+            workerLog.info('Progress', {
+              chain: chain.name,
+              block: cursor.toString(),
+              remaining: newRemaining.toString(),
+            });
+          }
+        }
       }
     } catch (error) {
       workerLog.error('Poll cycle error', {
@@ -91,6 +104,18 @@ async function main(): Promise<void> {
   if (chains.length === 0) {
     log.error('No enabled chains found. Set RPC_URL environment variables for at least one chain.');
     process.exit(1);
+  }
+
+  const allNames: ChainName[] = ['ethereum', 'polygon'];
+  for (const name of allNames) {
+    const cfg = loadChainConfig(name);
+    if (!cfg.enabled && cfg.rpcUrl) {
+      log.info(`${cfg.displayName} worker disabled`, {
+        reason: `set ENABLE_${name.toUpperCase()}=true to enable`,
+      });
+    } else if (!cfg.enabled && !cfg.rpcUrl) {
+      log.info(`${cfg.displayName} worker disabled`);
+    }
   }
 
   log.info('Indexer starting', {
