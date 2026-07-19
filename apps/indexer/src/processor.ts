@@ -1,7 +1,7 @@
 import { AnalysisRepository, TokenRepository } from '@token-intelligence-ai/database';
 import type { Logger } from '@token-intelligence-ai/shared';
 import type { ChainConfig } from '@token-intelligence-ai/blockchain';
-import { analyze } from '@token-intelligence-ai/analysis';
+import { analyze, classifyB20 } from '@token-intelligence-ai/analysis';
 import type { RpcClient, RpcTransaction } from './rpc.js';
 import { detectErc20 } from './erc20.js';
 import { validateTokenMetadata } from './erc20-validator.js';
@@ -90,6 +90,15 @@ export class BlockProcessor {
 
     const metadataConfidence = result.metadataConfidence;
 
+    const b20Classification = classifyB20({
+      name: result.metadata.name,
+      symbol: result.metadata.symbol,
+      deployer: tx.from.toLowerCase(),
+      metadataConfidence,
+      blockTimestamp,
+      getDeployerB20Count: async () => this.tokenRepo.getDeployerB20Count(tx.from.toLowerCase()),
+    });
+
     const token = await this.tokenRepo.createToken({
       chain: this.chain.name,
       chainId: this.chain.chainId,
@@ -103,6 +112,8 @@ export class BlockProcessor {
       blockTimestamp,
       transactionHash: tx.hash,
       metadataConfidence,
+      isB20: b20Classification.isB20,
+      b20Confidence: b20Classification.confidence,
     });
 
     this.log.info('New token discovered', {
