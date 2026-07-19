@@ -1,7 +1,7 @@
 import { AnalysisRepository, TokenRepository } from '@token-intelligence-ai/database';
 import type { Logger } from '@token-intelligence-ai/shared';
 import type { ChainConfig } from '@token-intelligence-ai/blockchain';
-import { analyze, classifyB20 } from '@token-intelligence-ai/analysis';
+import { analyze, classifyB20, calculateDeployerReputation } from '@token-intelligence-ai/analysis';
 import type { RpcClient, RpcTransaction } from './rpc.js';
 import { detectErc20 } from './erc20.js';
 import { validateTokenMetadata } from './erc20-validator.js';
@@ -99,11 +99,84 @@ export class BlockProcessor {
       getDeployerB20Count: async () => this.tokenRepo.getDeployerB20Count(tx.from.toLowerCase()),
     });
 
+    const deployer = tx.from.toLowerCase();
+
+    const existingTokens = await this.tokenRepo.getTokensByDeployer(deployer);
+    const allTokens = existingTokens.length;
+    const existingLow = 0;
+    const existingMedium = 0;
+    const existingHigh = 0;
+    const existingTotalRisk = 0;
+    const existingRiskCount = 0;
+    const existingNames = new Set<string>();
+    const existingSymbols = new Set<string>();
+    const existingNameCount = new Map<string, number>();
+    const existingSymCount = new Map<string, number>();
+
+    for (const t of existingTokens) {
+      existingNames.add(t.name.toLowerCase());
+      existingSymbols.add(t.symbol.toLowerCase());
+      existingNameCount.set(
+        t.name.toLowerCase(),
+        (existingNameCount.get(t.name.toLowerCase()) ?? 0) + 1,
+      );
+      existingSymCount.set(
+        t.symbol.toLowerCase(),
+        (existingSymCount.get(t.symbol.toLowerCase()) ?? 0) + 1,
+      );
+    }
+
+    const newMetadataConfSum =
+      existingTokens.reduce((s, t) => s + t.metadataConfidence, 0) + metadataConfidence;
+    const newB20ConfSum =
+      existingTokens.reduce((s, t) => s + t.b20Confidence, 0) + b20Classification.confidence;
+
+    const firstDeployment =
+      existingTokens.length > 0
+        ? existingTokens.reduce(
+            (earliest, t) => (t.blockTimestamp < earliest ? t.blockTimestamp : earliest),
+            existingTokens[0].blockTimestamp,
+          )
+        : blockTimestamp;
+    const spanMs = blockTimestamp.getTime() - firstDeployment.getTime();
+    const deploymentSpanDays = spanMs / (1000 * 60 * 60 * 24);
+
+    const newUniqueNames =
+      existingNames.size + (existingNames.has(result.metadata.name.toLowerCase()) ? 0 : 1);
+    const newUniqueSymbols =
+      existingSymbols.size + (existingSymbols.has(result.metadata.symbol.toLowerCase()) ? 0 : 1);
+    let newDupNames = 0;
+    for (const c of existingNameCount.values()) {
+      if (c > 1) newDupNames += c - 1;
+    }
+    let newDupSyms = 0;
+    for (const c of existingSymCount.values()) {
+      if (c > 1) newDupSyms += c - 1;
+    }
+
+    const repMetrics = {
+      totalTokens: allTokens + 1,
+      lowRiskTokens: existingLow,
+      mediumRiskTokens: existingMedium,
+      highRiskTokens: existingHigh,
+      avgRiskScore:
+        existingRiskCount > 0 ? Math.round(existingTotalRisk / existingRiskCount) : null,
+      avgMetadataConfidence: Math.round(newMetadataConfSum / (allTokens + 1)),
+      avgB20Confidence: Math.round(newB20ConfSum / (allTokens + 1)),
+      uniqueNames: newUniqueNames,
+      uniqueSymbols: newUniqueSymbols,
+      duplicateNames: newDupNames,
+      duplicateSymbols: newDupSyms,
+      deploymentSpanDays,
+    };
+
+    const repResult = calculateDeployerReputation(repMetrics);
+
     const token = await this.tokenRepo.createToken({
       chain: this.chain.name,
       chainId: this.chain.chainId,
       contractAddress,
-      deployer: tx.from.toLowerCase(),
+      deployer,
       name: result.metadata.name,
       symbol: result.metadata.symbol,
       decimals: result.metadata.decimals,
@@ -114,7 +187,19 @@ export class BlockProcessor {
       metadataConfidence,
       isB20: b20Classification.isB20,
       b20Confidence: b20Classification.confidence,
+      deployerReputation: repResult.score,
+      deployerGrade: repResult.grade,
     });
+
+    this.tokenRepo
+      .upsertDeployerAnalytics(deployer, repResult.score, repResult.grade)
+      .catch((error) => {
+        this.log.error('Failed to update deployer analytics', {
+          contractAddress,
+          deployer,
+          error: String(error),
+        });
+      });
 
     this.log.info('New token discovered', {
       chain: this.chain.name,
@@ -123,6 +208,8 @@ export class BlockProcessor {
       name: result.metadata.name,
       tokenId: token.id,
       metadataConfidence,
+      deployerReputation: repResult.score,
+      deployerGrade: repResult.grade,
     });
 
     await publishWatchEvent(
@@ -151,7 +238,17 @@ export class BlockProcessor {
       await this.analysisRepo.createAnalysis(token.id, analysisResult);
 
       if (analysisResult.riskLevel === 'HIGH' || analysisResult.riskLevel === 'CRITICAL') {
-        await publishWatchEvent(
+        await this.tokenRepo
+          .upsertDeployerAnalytics(deployer, repResult.score, repResult.grade)
+          .catch((error) => {
+            this.log.error('Failed to update deployer analytics after high risk', {
+              contractAddress,
+              deployer,
+              error: String(error),
+            });
+          });
+
+        publishWatchEvent(
           token.id,
           'HIGH_RISK',
           `${result.metadata.name} (${result.metadata.symbol}) flagged as ${analysisResult.riskLevel} risk (score: ${analysisResult.riskScore}/100)`,

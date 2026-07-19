@@ -16,6 +16,8 @@ const baseToken: Token = {
   metadataConfidence: 100,
   isB20: false,
   b20Confidence: 0,
+  deployerReputation: 0,
+  deployerGrade: 'Unknown',
   discoveredAt: new Date(),
   blockNumber: 1000n,
   blockTimestamp: new Date(),

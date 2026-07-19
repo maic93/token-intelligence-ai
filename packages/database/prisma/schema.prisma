@@ -20,6 +20,8 @@ model Token {
   metadataConfidence Int       @default(100)
   isB20           Boolean         @default(false)
   b20Confidence   Int             @default(0)
+  deployerReputation Int         @default(0)
+  deployerGrade   String          @default("Unknown")
   discoveredAt    DateTime        @default(now())
   blockNumber     BigInt
   blockTimestamp  DateTime
@@ -84,6 +86,28 @@ model WatchEvent {
   @@index([tokenId])
   @@index([eventType])
   @@map("watch_events")
+}
+
+model DeployerAnalytics {
+  id                    String   @id @default(uuid())
+  wallet                String   @unique
+  tokensCreated         Int      @default(0)
+  highRiskTokens        Int      @default(0)
+  mediumRiskTokens      Int      @default(0)
+  lowRiskTokens         Int      @default(0)
+  avgRiskScore          Float?
+  avgMetadataConfidence Float    @default(0)
+  avgB20Confidence      Float    @default(0)
+  firstSeen             DateTime?
+  lastSeen              DateTime?
+  uniqueSymbols         Int      @default(0)
+  reputationScore       Int      @default(50)
+  reputationGrade       String   @default("Average")
+  updatedAt             DateTime @updatedAt
+
+  @@index([reputationScore])
+  @@index([tokensCreated])
+  @@map("deployer_analytics")
 }
 
 model SyncCursor {

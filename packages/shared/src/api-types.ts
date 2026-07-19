@@ -53,6 +53,8 @@ export interface DeployerToken {
   blockTimestamp: string;
   riskScore: number | null;
   riskLevel: string | null;
+  b20Confidence?: number;
+  isB20?: boolean;
 }
 
 export interface DeployerData {
@@ -63,6 +65,23 @@ export interface DeployerData {
   latestDeployment: string | null;
   averageRisk: number | null;
   tokens: DeployerToken[];
+  reputation?: {
+    score: number;
+    grade: string;
+    reasons: string[];
+  };
+  b20Tokens?: number;
+  analytics?: {
+    highRisk: number;
+    mediumRisk: number;
+    lowRisk: number;
+    avgRiskScore: number | null;
+    avgMetadataConfidence: number;
+    avgB20Confidence: number;
+    uniqueSymbols: number;
+    firstSeen: string | null;
+    lastSeen: string | null;
+  };
 }
 
 export interface DeployerResponse {

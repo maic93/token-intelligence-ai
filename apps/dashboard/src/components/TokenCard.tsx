@@ -36,6 +36,33 @@ function confidenceTooltip(confidence: number): string {
   return `Metadata Confidence ${confidence}%\nPassed all ERC20 validation checks.`;
 }
 
+function deployerGradeColor(grade: string | undefined): string {
+  if (!grade) return 'var(--text-muted)';
+  switch (grade) {
+    case 'Excellent':
+      return '#4ade80';
+    case 'Good':
+      return '#a3e635';
+    case 'Average':
+      return '#eab308';
+    case 'Poor':
+      return '#fb923c';
+    case 'Dangerous':
+      return '#f87171';
+    default:
+      return '#9ca3af';
+  }
+}
+
+function deployerStars(reputation: number | undefined): string {
+  if (reputation === undefined || reputation === 0) return '';
+  if (reputation >= 80) return '\u2605\u2605\u2605\u2605\u2605';
+  if (reputation >= 60) return '\u2605\u2605\u2605\u2605\u2606';
+  if (reputation >= 40) return '\u2605\u2605\u2605\u2606\u2606';
+  if (reputation >= 20) return '\u2605\u2605\u2606\u2606\u2606';
+  return '\u2605\u2606\u2606\u2606\u2606';
+}
+
 function chainBadgeClass(chain: string): string {
   return `chain-badge-${chain}`;
 }
@@ -114,8 +141,22 @@ export function TokenCard({
           <span className="token-detail-value">{timeAgo(token.blockTimestamp)}</span>
         </div>
         <div className="token-detail-item">
-          <span className="token-detail-label">Deployer</span>
-          <span className="token-detail-value">{shortAddress(token.deployer)}</span>
+          <span className="token-detail-label">Creator</span>
+          <span
+            className="token-detail-value"
+            style={{ display: 'flex', flexDirection: 'column', gap: 1 }}
+          >
+            <span>{shortAddress(token.deployer)}</span>
+            {token.deployerReputation !== undefined && token.deployerReputation > 0 && (
+              <span
+                className="confidence-stars"
+                style={{ fontSize: 10, color: deployerGradeColor(token.deployerGrade) }}
+                title={`${token.deployerGrade} (${token.deployerReputation}/100)`}
+              >
+                {deployerStars(token.deployerReputation)} {token.deployerGrade}
+              </span>
+            )}
+          </span>
         </div>
       </div>
 

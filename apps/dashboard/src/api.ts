@@ -6,7 +6,8 @@ import type {
   ChainsResponse,
   AnalyticsResponse,
   PlatformAnalyticsResponse,
-  DeployerResponse,
+  DeployerListResponse,
+  DeployerDetailResponse,
   B20ListResponse,
 } from './types';
 
@@ -76,13 +77,17 @@ export function fetchPlatformAnalytics(signal?: AbortSignal): Promise<PlatformAn
   return fetchJson<PlatformAnalyticsResponse>(`${API_BASE}/platform-analytics`, signal);
 }
 
+export function fetchDeployers(signal?: AbortSignal): Promise<DeployerListResponse> {
+  return fetchJson<DeployerListResponse>(`${API_BASE}/deployers`, signal);
+}
+
 export function fetchDeployer(
   address: string,
   chain?: string,
   signal?: AbortSignal,
-): Promise<DeployerResponse> {
+): Promise<DeployerDetailResponse> {
   const search = chain ? `?chain=${encodeURIComponent(chain)}` : '';
-  return fetchJson<DeployerResponse>(
+  return fetchJson<DeployerDetailResponse>(
     `${API_BASE}/deployers/${encodeURIComponent(address)}${search}`,
     signal,
   );
