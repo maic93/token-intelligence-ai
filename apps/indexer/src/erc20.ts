@@ -1,4 +1,7 @@
 import type { RpcClient } from './rpc.js';
+import { createLogger } from '@token-intelligence-ai/shared';
+
+const log = createLogger('indexer:erc20');
 
 const SELECTOR_NAME = '0x06fdde03';
 const SELECTOR_SYMBOL = '0x95d89b41';
@@ -21,14 +24,24 @@ export async function detectErc20(
     rpc.ethCall(contractAddress, SELECTOR_DECIMALS),
   ]);
 
-  if (symbolResult.status === 'rejected' || decimalsResult.status === 'rejected') {
+  if (symbolResult.status === 'rejected') {
+    log.info('symbol() call failed', { contractAddress, error: String(symbolResult.reason) });
+    return null;
+  }
+  if (decimalsResult.status === 'rejected') {
+    log.info('decimals() call failed', { contractAddress, error: String(decimalsResult.reason) });
     return null;
   }
 
   const symbol = decodeBytes32OrAbiString(symbolResult.value);
   const decimals = decodeUint8FromAbi(decimalsResult.value);
 
-  if (!symbol || isNaN(decimals)) return null;
+  if (!symbol) {
+    return null;
+  }
+  if (isNaN(decimals)) {
+    return null;
+  }
 
   let name = symbol;
   let totalSupply = '0';
@@ -38,14 +51,14 @@ export async function detectErc20(
     const decoded = decodeBytes32OrAbiString(nameHex);
     if (decoded) name = decoded;
   } catch {
-    // name() not available on this contract
+    // name() optional
   }
 
   try {
     const supplyHex = await rpc.ethCall(contractAddress, SELECTOR_TOTAL_SUPPLY, { retry: false });
     totalSupply = decodeUint256FromAbi(supplyHex).toString();
   } catch {
-    // totalSupply() not available on this contract
+    // totalSupply() optional
   }
 
   return { name, symbol, decimals, totalSupply };
@@ -70,15 +83,17 @@ function decodeAbiString(hex: string): string {
   if (hex.length < 130) return '';
 
   const offset = parseInt(hex.substring(2, 66), 16);
-  const dataStart = 66 + offset * 2;
+  const dataStart = 2 + offset * 2;
 
   if (hex.length < dataStart + 64) return '';
 
   const length = parseInt(hex.substring(dataStart, dataStart + 64), 16);
+  if (length < 1 || length > 256) return '';
+
   const dataHex = hex.substring(dataStart + 64, dataStart + 64 + length * 2);
   const bytes = hexToBytes(dataHex);
 
-  return new TextDecoder().decode(new Uint8Array(bytes));
+  return new TextDecoder().decode(new Uint8Array(bytes)).replace(/\0/g, '');
 }
 
 function decodeBytes32OrAbiString(hex: string): string {

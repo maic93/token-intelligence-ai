@@ -129,6 +129,27 @@ export class RpcClient {
     return this.call<RpcTransactionReceipt>('eth_getTransactionReceipt', [txHash]);
   }
 
+  async getTransactionReceipts(txHashes: string[]): Promise<(RpcTransactionReceipt | null)[]> {
+    const results: (RpcTransactionReceipt | null)[] = [];
+    const BATCH_SIZE = 3;
+    const DELAY_MS = 200;
+
+    for (let offset = 0; offset < txHashes.length; offset += BATCH_SIZE) {
+      const batch = txHashes.slice(offset, offset + BATCH_SIZE);
+      const batchResults = await Promise.allSettled(
+        batch.map((hash) => this.getTransactionReceipt(hash)),
+      );
+      for (const r of batchResults) {
+        results.push(r.status === 'fulfilled' ? r.value : null);
+      }
+      if (offset + BATCH_SIZE < txHashes.length) {
+        await sleep(DELAY_MS);
+      }
+    }
+
+    return results;
+  }
+
   async ethCall(to: string, data: string, options?: CallOptions): Promise<string> {
     return this.call<string>('eth_call', [{ to, data }, 'latest'], options);
   }
