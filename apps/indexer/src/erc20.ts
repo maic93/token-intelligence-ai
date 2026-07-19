@@ -19,46 +19,37 @@ export async function detectErc20(
   rpc: RpcClient,
   contractAddress: string,
 ): Promise<Erc20Metadata | null> {
-  const [symbolResult, decimalsResult] = await Promise.allSettled([
+  const [symbolResult, decimalsResult, nameResult, supplyResult] = await Promise.allSettled([
     rpc.ethCall(contractAddress, SELECTOR_SYMBOL),
     rpc.ethCall(contractAddress, SELECTOR_DECIMALS),
+    rpc.ethCall(contractAddress, SELECTOR_NAME, { retry: false }),
+    rpc.ethCall(contractAddress, SELECTOR_TOTAL_SUPPLY, { retry: false }),
   ]);
 
   if (symbolResult.status === 'rejected') {
-    log.info('symbol() call failed', { contractAddress, error: String(symbolResult.reason) });
+    log.info('Not an ERC20 token', { contractAddress });
     return null;
   }
   if (decimalsResult.status === 'rejected') {
-    log.info('decimals() call failed', { contractAddress, error: String(decimalsResult.reason) });
+    log.info('Not an ERC20 token', { contractAddress });
     return null;
   }
 
   const symbol = decodeBytes32OrAbiString(symbolResult.value);
   const decimals = decodeUint8FromAbi(decimalsResult.value);
 
-  if (!symbol) {
-    return null;
-  }
-  if (isNaN(decimals)) {
-    return null;
-  }
+  if (!symbol) return null;
+  if (isNaN(decimals)) return null;
 
   let name = symbol;
-  let totalSupply = '0';
-
-  try {
-    const nameHex = await rpc.ethCall(contractAddress, SELECTOR_NAME, { retry: false });
-    const decoded = decodeBytes32OrAbiString(nameHex);
+  if (nameResult.status === 'fulfilled') {
+    const decoded = decodeBytes32OrAbiString(nameResult.value);
     if (decoded) name = decoded;
-  } catch {
-    // name() optional
   }
 
-  try {
-    const supplyHex = await rpc.ethCall(contractAddress, SELECTOR_TOTAL_SUPPLY, { retry: false });
-    totalSupply = decodeUint256FromAbi(supplyHex).toString();
-  } catch {
-    // totalSupply() optional
+  let totalSupply = '0';
+  if (supplyResult.status === 'fulfilled') {
+    totalSupply = decodeUint256FromAbi(supplyResult.value).toString();
   }
 
   return { name, symbol, decimals, totalSupply };

@@ -50,13 +50,22 @@ const CHAIN_DEFS: Record<ChainName, Omit<ChainConfig, 'rpcUrl' | 'enabled'>> = {
   },
 };
 
+function isExplicitlyEnabled(name: ChainName): boolean {
+  if (name === 'base' || name === 'robinhood') return true;
+  const envKey = `ENABLE_${name.toUpperCase()}`;
+  return process.env[envKey] === 'true';
+}
+
 export function loadChainConfig(name: ChainName): ChainConfig {
   const def = CHAIN_DEFS[name];
   const rpcUrl = readRpcUrl(name);
+  const hasRpc = rpcUrl.length > 0;
+  const isEnabled =
+    name === 'base' || name === 'robinhood' ? hasRpc : hasRpc && isExplicitlyEnabled(name);
   return {
     ...def,
     rpcUrl,
-    enabled: rpcUrl.length > 0,
+    enabled: isEnabled,
   };
 }
 
