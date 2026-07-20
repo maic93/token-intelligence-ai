@@ -1,108 +1,16 @@
-import {
-  prisma,
-  AnalysisRepository,
-  TokenRepository,
-  WalletRepository,
-} from '@token-intelligence-ai/database';
+import { prisma } from '@token-intelligence-ai/database';
 import { createLogger } from '@token-intelligence-ai/shared';
-import type { Logger } from '@token-intelligence-ai/shared';
 import {
   getEnabledChains,
   loadChainConfig,
   type ChainName,
-  type ChainConfig,
 } from '@token-intelligence-ai/blockchain';
 import { config } from './config.js';
-import { RpcClient } from './rpc.js';
-import { BlockProcessor } from './processor.js';
 import { initWatchPublisher, shutdownWatchPublisher } from './watch-publisher.js';
+import { ChainWorkerManager } from './worker-manager.js';
 
 const log = createLogger('indexer');
 let shuttingDown = false;
-
-async function resolveStartBlock(
-  repo: TokenRepository,
-  rpc: RpcClient,
-  chain: ChainConfig,
-  startBlock: number,
-): Promise<bigint> {
-  const lastBlock = await repo.getLastProcessedBlock(chain.name);
-  if (lastBlock !== null) return lastBlock;
-
-  if (startBlock > 0) return BigInt(startBlock);
-
-  const latest = await rpc.getLatestBlockNumber();
-  const nearLive = latest - 5n;
-  return nearLive > 0n ? nearLive : 0n;
-}
-
-async function runWorker(chain: ChainConfig): Promise<void> {
-  const workerLog: Logger = createLogger(`indexer:${chain.displayName}`);
-  const tokenRepo = new TokenRepository(prisma);
-  const analysisRepo = new AnalysisRepository(prisma);
-  const walletRepo = new WalletRepository(prisma);
-  const rpc = new RpcClient(chain.rpcUrl, workerLog);
-  const processor = new BlockProcessor(chain, rpc, tokenRepo, analysisRepo, walletRepo, workerLog);
-
-  const currentBlock = await resolveStartBlock(tokenRepo, rpc, chain, config.START_BLOCK);
-
-  workerLog.info('Worker starting', {
-    chain: chain.name,
-    chainId: chain.chainId,
-    rpcUrl: chain.rpcUrl,
-    startBlock: config.START_BLOCK,
-    pollIntervalMs: config.POLL_INTERVAL_MS,
-    currentBlock: currentBlock.toString(),
-  });
-
-  let cursor = currentBlock;
-  let liveMode = false;
-
-  while (!shuttingDown) {
-    try {
-      const latestBlock = await rpc.getLatestBlockNumber();
-      const remaining = latestBlock - cursor;
-
-      if (!liveMode && remaining <= 100n) {
-        liveMode = true;
-        workerLog.info('Live mode entered', {
-          block: cursor.toString(),
-          remaining: remaining.toString(),
-        });
-      }
-
-      if (remaining > 0n) {
-        const isCatchUp = remaining > 100n;
-
-        while (cursor < latestBlock && !shuttingDown) {
-          cursor += 1n;
-          await processor.processBlock(cursor);
-          const newRemaining = latestBlock - cursor;
-
-          if (isCatchUp && newRemaining % 100n === 0n) {
-            workerLog.info('Progress', {
-              chain: chain.name,
-              block: cursor.toString(),
-              remaining: newRemaining.toString(),
-            });
-          }
-        }
-      }
-    } catch (error) {
-      workerLog.error('Poll cycle error', {
-        chain: chain.name,
-        worker: chain.displayName,
-        error: String(error),
-      });
-    }
-
-    if (!shuttingDown) {
-      await sleep(config.POLL_INTERVAL_MS);
-    }
-  }
-
-  workerLog.info('Worker stopped', { chain: chain.name });
-}
 
 async function main(): Promise<void> {
   const chains = getEnabledChains();
@@ -112,7 +20,7 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  const allNames: ChainName[] = ['ethereum', 'polygon'];
+  const allNames: ChainName[] = ['base', 'ethereum', 'polygon', 'robinhood'];
   for (const name of allNames) {
     const cfg = loadChainConfig(name);
     if (!cfg.enabled && cfg.rpcUrl) {
@@ -140,17 +48,26 @@ async function main(): Promise<void> {
     shuttingDown = true;
   });
 
-  try {
-    const workers = chains.map((chain) =>
-      runWorker(chain).catch((error) => {
-        log.error('Worker failed', {
-          chain: chain.name,
-          error: String(error),
-        });
-      }),
-    );
+  const workerManager = new ChainWorkerManager({
+    pollIntervalMs: config.POLL_INTERVAL_MS,
+    startBlock: config.START_BLOCK,
+    onStatusChange: (chain, oldStatus, newStatus) => {
+      log.info('Chain status changed', { chain, from: oldStatus, to: newStatus });
+    },
+  });
 
-    await Promise.all(workers);
+  try {
+    const handles = workerManager.startAll(chains);
+    log.info('All workers started', {
+      count: handles.length,
+      chains: handles.map((h) => h.chain),
+    });
+
+    while (!shuttingDown) {
+      await sleep(1000);
+    }
+
+    workerManager.stopAll();
   } finally {
     log.info('Indexer stopped');
     await shutdownWatchPublisher();

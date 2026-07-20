@@ -46,6 +46,17 @@ export interface CallOptions {
   retry?: boolean;
 }
 
+export interface RpcMetrics {
+  url: string;
+  latencyMs: number;
+  lastSuccess: number | null;
+  lastFailure: number | null;
+  successCount: number;
+  failureCount: number;
+  timeoutCount: number;
+  isHealthy: boolean;
+}
+
 const MAX_ATTEMPTS = 5;
 const BASE_DELAY_MS = 1_000;
 const MAX_DELAY_MS = 30_000;
@@ -57,11 +68,34 @@ export class RpcClient {
   private nextId = 0;
   private cachedLatestBlock: bigint | null = null;
   private lastCacheRefresh = 0;
+  private totalLatencyMs = 0;
+  private totalCalls = 0;
+  private lastSuccessTime: number | null = null;
+  private lastFailureTime: number | null = null;
+  private successCount = 0;
+  private failureCount = 0;
+  private timeoutCount = 0;
 
   constructor(
     private readonly url: string,
     private readonly log: Logger,
   ) {}
+
+  getMetrics(): RpcMetrics {
+    return {
+      url: this.url,
+      latencyMs: this.totalCalls > 0 ? Math.round(this.totalLatencyMs / this.totalCalls) : 0,
+      lastSuccess: this.lastSuccessTime,
+      lastFailure: this.lastFailureTime,
+      successCount: this.successCount,
+      failureCount: this.failureCount,
+      timeoutCount: this.timeoutCount,
+      isHealthy:
+        this.failureCount === 0 ||
+        (this.lastSuccessTime !== null &&
+          (this.lastFailureTime === null || this.lastSuccessTime > this.lastFailureTime)),
+    };
+  }
 
   async call<T>(method: string, params: unknown[], options?: CallOptions): Promise<T> {
     const shouldRetry = options?.retry !== false;
@@ -74,6 +108,8 @@ export class RpcClient {
         this.log.warn('RPC retry', { method, attempt, delayMs });
         await sleep(delayMs);
       }
+
+      const start = performance.now();
 
       try {
         this.nextId++;
@@ -109,8 +145,24 @@ export class RpcClient {
           throw new Error(`RPC error ${json.error.code}: ${json.error.message}`);
         }
 
+        const elapsed = Math.round(performance.now() - start);
+        this.totalLatencyMs += elapsed;
+        this.totalCalls++;
+        this.successCount++;
+        this.lastSuccessTime = Date.now();
+
         return json.result;
       } catch (error) {
+        const elapsed = Math.round(performance.now() - start);
+        this.totalLatencyMs += elapsed;
+        this.totalCalls++;
+        this.failureCount++;
+        this.lastFailureTime = Date.now();
+
+        if (error instanceof DOMException && error.name === 'AbortError') {
+          this.timeoutCount++;
+        }
+
         lastError = error instanceof Error ? error : new Error(String(error));
         if (attempt === maxAttempts) break;
       }
