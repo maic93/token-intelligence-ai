@@ -10,6 +10,10 @@ export interface TokenData {
   deployer: string;
   deployerReputation?: number;
   deployerGrade?: string;
+  aiCategory?: string;
+  aiRecommendation?: string;
+  aiConfidence?: number;
+  aiSummary?: string;
   blockNumber: string;
   blockTimestamp: string;
   transactionHash: string;
@@ -347,6 +351,30 @@ export interface DeployerDetailData {
 
 export interface DeployerDetailResponse {
   data: DeployerDetailData;
+}
+
+export interface IntelligenceTokenData {
+  id: number;
+  contractAddress: string;
+  chain: string;
+  name: string;
+  symbol: string;
+  aiCategory: string;
+  aiRecommendation: string;
+  aiConfidence: number;
+  aiSummary: string;
+  deployerReputation: number;
+  deployerGrade: string;
+  discoveredAt: string;
+}
+
+export interface IntelligenceListResponse {
+  data: IntelligenceTokenData[];
+  pagination: { total: number; limit: number; offset: number };
+  aggregations: {
+    categories: Record<string, number>;
+    recommendations: Record<string, number>;
+  };
 }
 
 export interface AlertItem {

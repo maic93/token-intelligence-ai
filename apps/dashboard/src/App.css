@@ -1720,3 +1720,59 @@ body {
    ============================== */
 
 ::selection { background: var(--accent-soft); color: var(--text); }
+
+/* ==============================
+   AI Intelligence Badges
+   ============================== */
+
+.intel-category-badge-b20 { padding: 1px 6px; border-radius: 4px; font-size: 10px; font-weight: 700; background: rgba(245, 158, 11, 0.2); color: #f59e0b; }
+.intel-category-badge-meme { padding: 1px 6px; border-radius: 4px; font-size: 10px; font-weight: 700; background: rgba(236, 72, 153, 0.2); color: #ec4899; }
+.intel-category-badge-ai { padding: 1px 6px; border-radius: 4px; font-size: 10px; font-weight: 700; background: rgba(139, 92, 246, 0.2); color: #8b5cf6; }
+.intel-category-badge-defi { padding: 1px 6px; border-radius: 4px; font-size: 10px; font-weight: 700; background: rgba(6, 182, 212, 0.2); color: #06b6d4; }
+.intel-category-badge-gaming { padding: 1px 6px; border-radius: 4px; font-size: 10px; font-weight: 700; background: rgba(34, 197, 94, 0.2); color: #22c55e; }
+.intel-category-badge-nft { padding: 1px 6px; border-radius: 4px; font-size: 10px; font-weight: 700; background: rgba(249, 115, 22, 0.2); color: #f97316; }
+.intel-category-badge-utility { padding: 1px 6px; border-radius: 4px; font-size: 10px; font-weight: 700; background: rgba(100, 116, 139, 0.2); color: #64748b; }
+.intel-category-badge-unknown { padding: 1px 6px; border-radius: 4px; font-size: 10px; font-weight: 700; background: rgba(156, 163, 175, 0.15); color: #9ca3af; }
+
+.intel-rec-badge-safe { padding: 1px 6px; border-radius: 4px; font-size: 10px; font-weight: 700; background: rgba(74, 222, 128, 0.2); color: #4ade80; }
+.intel-rec-badge-watch { padding: 1px 6px; border-radius: 4px; font-size: 10px; font-weight: 700; background: rgba(96, 165, 250, 0.2); color: #60a5fa; }
+.intel-rec-badge-caution { padding: 1px 6px; border-radius: 4px; font-size: 10px; font-weight: 700; background: rgba(250, 204, 21, 0.2); color: #facc15; }
+.intel-rec-badge-avoid { padding: 1px 6px; border-radius: 4px; font-size: 10px; font-weight: 700; background: rgba(248, 113, 113, 0.2); color: #f87171; }
+
+.form-select {
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-surface);
+  color: var(--text);
+  font-size: 12px;
+  font-family: var(--font);
+  outline: none;
+  cursor: pointer;
+  transition: border-color var(--transition);
+}
+
+.form-select:hover { border-color: var(--border-light); }
+.form-select:focus { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+
+.page-container { max-width: 1440px; width: 100%; }
+
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+
+.loading {
+  text-align: center;
+  padding: 48px;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 12px;
+}

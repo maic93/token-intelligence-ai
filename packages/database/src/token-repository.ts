@@ -95,6 +95,10 @@ export class TokenRepository {
     });
   }
 
+  async updateToken(id: string, data: Prisma.TokenUpdateInput): Promise<Token> {
+    return this.prisma.token.update({ where: { id }, data });
+  }
+
   async getTokenByAddress(chain: ChainName, contractAddress: string): Promise<Token | null> {
     return this.prisma.token.findUnique({
       where: {
@@ -103,6 +107,31 @@ export class TokenRepository {
           contractAddress: contractAddress.toLowerCase(),
         },
       },
+    });
+  }
+
+  async listIntelligenceTokens(options?: {
+    category?: string;
+    recommendation?: string;
+    chain?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<Token[]> {
+    return this.prisma.token.findMany({
+      where: {
+        ...(options?.category ? { aiCategory: options.category } : {}),
+        ...(options?.recommendation ? { aiRecommendation: options.recommendation } : {}),
+        ...(options?.chain ? { chain: options.chain } : {}),
+      },
+      orderBy: { discoveredAt: 'desc' },
+      take: options?.limit ?? 50,
+      skip: options?.offset ?? 0,
+    });
+  }
+
+  async getTokenIntelligence(chain: ChainName, contractAddress: string): Promise<Token | null> {
+    return this.prisma.token.findUnique({
+      where: { chain_contractAddress: { chain, contractAddress: contractAddress.toLowerCase() } },
     });
   }
 

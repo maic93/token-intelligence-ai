@@ -1,7 +1,12 @@
 import { AnalysisRepository, TokenRepository } from '@token-intelligence-ai/database';
 import type { Logger } from '@token-intelligence-ai/shared';
 import type { ChainConfig } from '@token-intelligence-ai/blockchain';
-import { analyze, classifyB20, calculateDeployerReputation } from '@token-intelligence-ai/analysis';
+import {
+  analyze,
+  classifyB20,
+  calculateDeployerReputation,
+  analyzeToken,
+} from '@token-intelligence-ai/analysis';
 import type { RpcClient, RpcTransaction } from './rpc.js';
 import { detectErc20 } from './erc20.js';
 import { validateTokenMetadata } from './erc20-validator.js';
@@ -20,8 +25,8 @@ export class BlockProcessor {
 
   private canCreateContract(tx: RpcTransaction): boolean {
     if (tx.to === null) return true;
-    if (tx.input.length > SHORT_INPUT_LENGTH) return true;
-    return false;
+    if (tx.input.length > SHORT_INPUT_LENGTH) return false;
+    return true;
   }
 
   async processBlock(blockNumber: bigint): Promise<void> {
@@ -29,12 +34,26 @@ export class BlockProcessor {
     const blockTimestamp = new Date(parseInt(block.timestamp, 16) * 1000);
 
     const deployable = block.transactions.filter((tx) => this.canCreateContract(tx));
+    this.log.info('Block processed', {
+      chain: this.chain.name,
+      block: blockNumber.toString(),
+      txs: block.transactions.length,
+      deployable: deployable.length,
+    });
     if (deployable.length === 0) {
       await this.tokenRepo.saveLastProcessedBlock(this.chain.name, blockNumber);
       return;
     }
 
     const receipts = await this.rpc.getTransactionReceipts(deployable.map((tx) => tx.hash));
+    const withContract = receipts.filter((r) => r && r.contractAddress).length;
+    this.log.info('STAGE:receipts', {
+      chain: this.chain.name,
+      block: blockNumber.toString(),
+      total: deployable.length,
+      receipts: receipts.filter(Boolean).length,
+      withContractAddress: withContract,
+    });
 
     for (let i = 0; i < deployable.length; i++) {
       const tx = deployable[i];
@@ -67,26 +86,42 @@ export class BlockProcessor {
     blockTimestamp: Date,
   ): Promise<void> {
     const contractAddress = receipt.contractAddress!.toLowerCase();
+    this.log.info('STAGE:candidate', {
+      chain: this.chain.name,
+      contract: contractAddress,
+      txHash: tx.hash,
+      block: blockNumber.toString(),
+    });
     const exists = await this.tokenRepo.tokenExists(this.chain.name, contractAddress);
-    if (exists) return;
+    if (exists) {
+      this.log.info('STAGE:exists true, skipping', { contract: contractAddress });
+      return;
+    }
 
     const result = await detectErc20(this.rpc, contractAddress);
     if (!result.metadata) {
-      this.log.info('Rejected candidate', {
+      this.log.info('STAGE:erc20 failed', {
         contract: contractAddress,
         reason: result.reason || 'not ERC20',
       });
       return;
     }
+    this.log.info('STAGE:metadata loaded', {
+      contract: contractAddress,
+      name: result.metadata.name,
+      symbol: result.metadata.symbol,
+      confidence: result.metadataConfidence,
+    });
 
     const validation = validateTokenMetadata(result.metadata);
     if (!validation.valid) {
-      this.log.info('Rejected candidate', {
+      this.log.info('STAGE:validator rejected', {
         contract: contractAddress,
-        reason: validation.reason || 'helper contract',
+        reason: validation.reason,
       });
       return;
     }
+    this.log.info('STAGE:validator passed', { contract: contractAddress });
 
     const metadataConfidence = result.metadataConfidence;
 
@@ -172,23 +207,36 @@ export class BlockProcessor {
 
     const repResult = calculateDeployerReputation(repMetrics);
 
-    const token = await this.tokenRepo.createToken({
-      chain: this.chain.name,
-      chainId: this.chain.chainId,
-      contractAddress,
-      deployer,
-      name: result.metadata.name,
-      symbol: result.metadata.symbol,
-      decimals: result.metadata.decimals,
-      totalSupply: result.metadata.totalSupply,
-      blockNumber,
-      blockTimestamp,
-      transactionHash: tx.hash,
-      metadataConfidence,
-      isB20: b20Classification.isB20,
-      b20Confidence: b20Classification.confidence,
-      deployerReputation: repResult.score,
-      deployerGrade: repResult.grade,
+    let token;
+    try {
+      token = await this.tokenRepo.createToken({
+        chain: this.chain.name,
+        chainId: this.chain.chainId,
+        contractAddress,
+        deployer,
+        name: result.metadata.name,
+        symbol: result.metadata.symbol,
+        decimals: result.metadata.decimals,
+        totalSupply: result.metadata.totalSupply,
+        blockNumber,
+        blockTimestamp,
+        transactionHash: tx.hash,
+        metadataConfidence,
+        isB20: b20Classification.isB20,
+        b20Confidence: b20Classification.confidence,
+        deployerReputation: repResult.score,
+        deployerGrade: repResult.grade,
+      });
+    } catch (createError) {
+      this.log.error('STAGE:createToken FAILED', {
+        contract: contractAddress,
+        error: String(createError),
+      });
+      throw createError;
+    }
+    this.log.info('STAGE:database insert success', {
+      contract: contractAddress,
+      tokenId: token.id,
     });
 
     this.tokenRepo
@@ -235,7 +283,42 @@ export class BlockProcessor {
         getDeployerCount: (deployer: string, chain: string) =>
           this.analysisRepo.getDeployerTokenCount(deployer, chain),
       });
+      this.log.info('STAGE:risk analysis complete', {
+        contract: contractAddress,
+        riskScore: analysisResult.riskScore,
+        riskLevel: analysisResult.riskLevel,
+      });
       await this.analysisRepo.createAnalysis(token.id, analysisResult);
+
+      const intelligence = analyzeToken({
+        name: result.metadata.name,
+        symbol: result.metadata.symbol,
+        riskScore: analysisResult.riskScore,
+        riskLevel: analysisResult.riskLevel,
+        metadataConfidence,
+        isB20: b20Classification.isB20,
+        b20Confidence: b20Classification.confidence,
+        deployerReputation: repResult.score,
+        deployerGrade: repResult.grade,
+        totalSupply: result.metadata.totalSupply,
+        decimals: result.metadata.decimals,
+      });
+
+      this.log.info('STAGE:AI analysis complete', {
+        contract: contractAddress,
+        category: intelligence.category,
+        recommendation: intelligence.recommendation,
+        confidence: intelligence.confidence,
+      });
+
+      await this.tokenRepo.updateToken(token.id, {
+        aiCategory: intelligence.category,
+        aiRecommendation: intelligence.recommendation,
+        aiConfidence: Math.round(intelligence.confidence),
+        aiSummary: intelligence.summary,
+      });
+
+      this.log.info('STAGE:updateToken AI fields success', { contract: contractAddress });
 
       if (analysisResult.riskLevel === 'HIGH' || analysisResult.riskLevel === 'CRITICAL') {
         await this.tokenRepo
