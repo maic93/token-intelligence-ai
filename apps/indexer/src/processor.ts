@@ -1,4 +1,8 @@
-import { AnalysisRepository, TokenRepository } from '@token-intelligence-ai/database';
+import {
+  AnalysisRepository,
+  TokenRepository,
+  WalletRepository,
+} from '@token-intelligence-ai/database';
 import type { Logger } from '@token-intelligence-ai/shared';
 import type { ChainConfig } from '@token-intelligence-ai/blockchain';
 import {
@@ -6,7 +10,9 @@ import {
   classifyB20,
   calculateDeployerReputation,
   analyzeToken,
+  analyzeWallet,
 } from '@token-intelligence-ai/analysis';
+
 import type { RpcClient, RpcTransaction } from './rpc.js';
 import { detectErc20 } from './erc20.js';
 import { validateTokenMetadata } from './erc20-validator.js';
@@ -20,6 +26,7 @@ export class BlockProcessor {
     private readonly rpc: RpcClient,
     private readonly tokenRepo: TokenRepository,
     private readonly analysisRepo: AnalysisRepository,
+    private readonly walletRepo: WalletRepository,
     private readonly log: Logger,
   ) {}
 
@@ -343,11 +350,98 @@ export class BlockProcessor {
           },
         );
       }
+
+      await this.recomputeWalletProfile(deployer, blockTimestamp);
     } catch (error) {
       this.log.error('Analysis failed', {
         contractAddress,
         error: String(error),
       });
+    }
+  }
+
+  private async recomputeWalletProfile(deployer: string, blockTimestamp: Date): Promise<void> {
+    try {
+      const tokens = await this.tokenRepo.getTokensByDeployer(deployer);
+
+      const totalRiskScores: number[] = [];
+      let highRisk = 0;
+      let successful = 0;
+      let totalMetaConf = 0;
+      let totalAiConf = 0;
+      let b20Count = 0;
+
+      for (const t of tokens) {
+        totalMetaConf += t.metadataConfidence;
+        totalAiConf += t.aiConfidence;
+        if (t.isB20) b20Count++;
+      }
+
+      const analyses = await this.analysisRepo.getAnalysesByTokenIds(tokens.map((t) => t.id));
+      const analysisMap = new Map(analyses.map((a) => [a.tokenId, a]));
+
+      for (const t of tokens) {
+        const analysis = analysisMap.get(t.id);
+        if (analysis) {
+          totalRiskScores.push(analysis.riskScore);
+          if (analysis.riskLevel === 'HIGH' || analysis.riskLevel === 'CRITICAL') highRisk++;
+          if (analysis.riskLevel === 'LOW' || analysis.riskLevel === 'SAFE') successful++;
+        }
+      }
+
+      const firstSeen =
+        tokens.length > 0
+          ? tokens.reduce(
+              (earliest, t) => (t.discoveredAt < earliest ? t.discoveredAt : earliest),
+              tokens[0].discoveredAt,
+            )
+          : blockTimestamp;
+      const lastSeen = blockTimestamp;
+      const walletAgeDays = Math.round((Date.now() - firstSeen.getTime()) / (1000 * 60 * 60 * 24));
+      const spanMs = lastSeen.getTime() - firstSeen.getTime();
+      const deploymentSpanDays = spanMs / (1000 * 60 * 60 * 24);
+
+      const metrics: import('@token-intelligence-ai/analysis').WalletMetrics = {
+        totalDeployments: tokens.length,
+        successfulTokens: successful,
+        highRiskTokens: highRisk,
+        b20Tokens: b20Count,
+        averageRisk:
+          totalRiskScores.length > 0
+            ? Math.round(totalRiskScores.reduce((a, b) => a + b, 0) / totalRiskScores.length)
+            : null,
+        averageMetadataConfidence: tokens.length > 0 ? totalMetaConf / tokens.length : 0,
+        averageAiConfidence: tokens.length > 0 ? totalAiConf / tokens.length : 0,
+        walletAgeDays,
+        deploymentSpanDays,
+      };
+
+      const analysis = analyzeWallet(deployer, metrics, firstSeen, lastSeen);
+
+      await this.walletRepo.updateWallet(deployer, {
+        walletAgeDays: analysis.walletAgeDays,
+        firstSeen,
+        lastSeen,
+        totalDeployments: analysis.totalDeployments,
+        successfulTokens: analysis.successfulTokens,
+        highRiskTokens: analysis.highRiskTokens,
+        b20Tokens: analysis.b20Tokens,
+        averageRisk: analysis.averageRisk,
+        averageMetadataConfidence: analysis.averageMetadataConfidence,
+        averageAiConfidence: analysis.averageAiConfidence,
+        reputation: analysis.reputation,
+        grade: analysis.grade,
+        labels: analysis.labels,
+        summary: analysis.summary,
+      });
+
+      this.log.info('Wallet profile updated', {
+        deployer,
+        reputation: analysis.reputation,
+        grade: analysis.grade,
+      });
+    } catch (error) {
+      this.log.error('Failed to recompute wallet profile', { deployer, error: String(error) });
     }
   }
 }

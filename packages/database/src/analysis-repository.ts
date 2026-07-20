@@ -60,6 +60,15 @@ export class AnalysisRepository {
     });
   }
 
+  async getAnalysesByTokenIds(
+    tokenIds: string[],
+  ): Promise<Pick<TokenAnalysis, 'tokenId' | 'riskScore' | 'riskLevel'>[]> {
+    return this.prisma.tokenAnalysis.findMany({
+      where: { tokenId: { in: tokenIds } },
+      select: { tokenId: true, riskScore: true, riskLevel: true },
+    });
+  }
+
   async getDeployerTokenCount(deployer: string, chain: string): Promise<number> {
     return this.prisma.token.count({
       where: {

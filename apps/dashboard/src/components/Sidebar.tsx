@@ -9,6 +9,7 @@ import {
   Shield,
   Users,
   Brain,
+  Wallet,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -23,6 +24,7 @@ const navItems = [
   { id: 'tokens', label: 'Tokens', icon: Search },
   { id: 'b20', label: 'B20 Intelligence', icon: Shield },
   { id: 'intelligence', label: 'AI Intelligence', icon: Brain },
+  { id: 'wallets', label: 'Wallet Intelligence', icon: Wallet },
   { id: 'deployers', label: 'Deployers', icon: Users },
   { id: 'analytics', label: 'Analytics', icon: BarChart3 },
   { id: 'chains', label: 'Chains', icon: Link2 },

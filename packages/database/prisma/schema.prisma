@@ -114,6 +114,32 @@ model DeployerAnalytics {
   @@map("deployer_analytics")
 }
 
+model WalletProfile {
+  id                    String   @id @default(uuid())
+  wallet                String   @unique
+  walletAgeDays         Int?
+  firstSeen             DateTime?
+  lastSeen              DateTime?
+  totalDeployments      Int      @default(0)
+  successfulTokens      Int      @default(0)
+  highRiskTokens        Int      @default(0)
+  b20Tokens             Int      @default(0)
+  averageRisk           Float?
+  averageMetadataConfidence Float @default(0)
+  averageAiConfidence   Float    @default(0)
+  reputation            Int      @default(50)
+  grade                 String   @default("Average")
+  labels                Json     @default("[]")
+  summary               String   @default("")
+  updatedAt             DateTime @updatedAt
+
+  @@index([reputation])
+  @@index([grade])
+  @@index([totalDeployments])
+  @@index([lastSeen])
+  @@map("wallet_profiles")
+}
+
 model SyncCursor {
   id          String   @id
   chain       String

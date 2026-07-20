@@ -23,6 +23,7 @@ import { searchRouter } from './routes/search.js';
 import { watchRouter } from './routes/watch.js';
 import { b20Router } from './routes/b20.js';
 import { intelligenceRouter } from './routes/intelligence.js';
+import { walletsRouter } from './routes/wallets.js';
 import { errorHandler } from './middleware/error-handler.js';
 import { requestLogger } from './middleware/request-logger.js';
 import { requestIdMiddleware } from './middleware/request-id.js';
@@ -76,6 +77,7 @@ app.use('/api/analytics', analyticsRouter);
 app.use('/api/watch', watchRouter);
 app.use('/api/b20', b20Router);
 app.use('/api/intelligence', intelligenceRouter);
+app.use('/api/wallets', walletsRouter);
 
 if (config.NODE_ENV === 'production') {
   const dashboardPath = path.resolve(import.meta.dirname, '../../dashboard/dist');

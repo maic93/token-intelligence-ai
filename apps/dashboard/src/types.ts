@@ -377,6 +377,65 @@ export interface IntelligenceListResponse {
   };
 }
 
+export interface WalletProfileData {
+  wallet: string;
+  walletAgeDays: number | null;
+  firstSeen: string | null;
+  lastSeen: string | null;
+  totalDeployments: number;
+  successfulTokens: number;
+  highRiskTokens: number;
+  b20Tokens: number;
+  averageRisk: number | null;
+  averageMetadataConfidence: number;
+  averageAiConfidence: number;
+  reputation: number;
+  grade: string;
+  labels: string[];
+  summary: string;
+  tokens: WalletTokenEntry[];
+  riskDistribution?: Record<string, number>;
+  categoryDistribution?: Record<string, number>;
+  b20Distribution?: { total: number; percentage: number };
+  timeline?: {
+    date: string;
+    name: string;
+    symbol: string;
+    riskScore: number | null;
+    riskLevel: string | null;
+  }[];
+}
+
+export interface WalletTokenEntry {
+  contractAddress: string;
+  chain: string;
+  name: string;
+  symbol: string;
+  riskScore: number | null;
+  riskLevel: string | null;
+  isB20: boolean;
+  b20Confidence: number;
+  aiCategory: string;
+  aiConfidence: number;
+  blockTimestamp: string;
+  discoveredAt: string;
+}
+
+export interface WalletListResponse {
+  data: WalletProfileData[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export interface WalletDetailResponse {
+  data: WalletProfileData;
+}
+
+export interface WalletSearchResponse {
+  data: WalletProfileData[];
+}
+
 export interface AlertItem {
   id: string;
   message: string;
