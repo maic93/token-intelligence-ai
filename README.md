@@ -39,6 +39,7 @@ Token Intelligence AI is an open-source platform that continuously indexes suppo
 - **B20 Detection Engine** — Heuristic classifier with weighted keyword signals, metadata confidence boost, and recency boost
 - **Deployer Intelligence Engine** — Wallet reputation scoring (0–100, 5 grades), deployer analytics, risk distribution, metadata quality, B20 history
 - **Metadata Validation Pipeline** — Strict ERC-20 metadata validation with rejection logging, confidence scoring (0–100), and sanitization of names/symbols
+- **AI Token Intelligence Engine** — Deterministic explainable-AI pipeline that classifies every token into 8 categories (MEME, AI, DEFI, GAMING, NFT, B20, UTILITY, UNKNOWN), generates human-readable summaries, assigns a confidence score, and produces a recommendation (SAFE, WATCH, CAUTION, AVOID) — all without external APIs
 
 ---
 
@@ -932,6 +933,157 @@ Store on Token + DeployerAnalytics table
 - Risk distribution is approximate until analysis runs on each token
 - Cross-chain reputation is computed per-chain (not merged across all chains)
 - The system does not detect wash trading, Sybil attacks, or off-chain behavior
+
+---
+
+## AI Token Intelligence Engine
+
+The AI Token Intelligence Engine is a **deterministic explainable-AI pipeline** that produces human-readable assessments for every indexed token — without using any external AI API, LLM, or ML model. It classifies tokens into categories, assigns a confidence score, generates a plain-English summary, and emits a recommendation.
+
+### Classification Pipeline
+
+```
+New Token Indexed
+        │
+        ▼
+Collect Signals
+├── token name + symbol
+├── risk score + risk level (from Risk Analysis Engine)
+├── metadata confidence (from Metadata Validation Pipeline)
+├── B20 classification (from B20 Detection Engine)
+└── deployer reputation (from Deployer Intelligence Engine)
+        │
+        ▼
+Category Scoring
+├── 20+ keyword regex patterns matched against name/symbol
+├── each match contributes a weighted score (15–35) to a category
+├── B20 classifier result adds +20 confirmation boost
+├── deployer/risk/metadata signals added to reasoning
+        │
+        ▼
+Category Selection
+├── Highest-scoring category wins
+├── Tie → B20 preferred, else first highest
+├── No matches → UNKNOWN
+        │
+        ▼
+Confidence Calculation
+├── ≥50 total score → 50 + score (max 95)
+├── ≥25 total score → 30 + score (max 75)
+├── >0 total score  → 15 + score (max 50)
+└── 0 total score   → 0
+        │
+        ▼
+Recommendation Logic
+├── B20 with ≥70 confidence          → WATCH
+├── risk ≤ 20 + rep ≥ 60 + meta ≥ 80 → SAFE
+├── risk ≥ 70 OR rep ≤ 20 OR meta < 40 → AVOID
+├── risk ≥ 40 OR rep ≤ 40            → CAUTION
+└── otherwise                         → SAFE
+        │
+        ▼
+Summary Generation
+├── Category description ("Meme-themed token")
+├── Risk descriptor ("with high/low/moderate risk characteristics")
+├── Deployer quality ("created by a reputable/decent/low-rep deployer")
+├── Metadata quality ("with verified/unverified metadata")
+├── Scenario notes ("likely a speculative meme launch")
+└── Recommendation text ("Low risk profile")
+        │
+        ▼
+Store on Token (aiCategory, aiRecommendation, aiConfidence, aiSummary)
+```
+
+### Categories
+
+| Category    | Examples                                 | Detection Signals                                     |
+| ----------- | ---------------------------------------- | ----------------------------------------------------- |
+| **MEME**    | DOGE, PEPE, SHIB, FLOKI, BONK, WOOF      | Dog/meme names, viral slang, cultural references      |
+| **AI**      | AI, GPT, AGENT, BRAIN, NEURAL, DEEP      | AI/ML terminology in name or symbol                   |
+| **DEFI**    | SWAP, STAKE, FARM, YIELD, VAULT, DEX     | DeFi protocol keywords                                |
+| **GAMING**  | GAME, PLAY, GUILD, RAID, HERO, GAMEFI    | Gaming/metaverse terminology                          |
+| **NFT**     | NFT, COLLECTION, ART, PIXEL, APE, PUNK   | NFT/collectible keywords                              |
+| **B20**     | BTC, SATS, ORDI, Rune, Base20            | Bitcoin-ecosystem names + B20 classifier confirmation |
+| **UTILITY** | GOVERNANCE, VOTE, DAO, PROTOCOL, STAKING | Governance/infrastructure keywords                    |
+| **UNKNOWN** | —                                        | No keyword matches                                    |
+
+### Recommendations
+
+| Recommendation | Meaning                 | Conditions                                  |
+| -------------- | ----------------------- | ------------------------------------------- |
+| **SAFE**       | Low risk profile        | risk ≤ 20, deployer rep ≥ 60, metadata ≥ 80 |
+| **WATCH**      | Monitor for development | High-confidence B20 or interesting signals  |
+| **CAUTION**    | Proceed with caution    | Moderate risk (≥40) or deployer issues      |
+| **AVOID**      | High risk — avoid       | risk ≥ 70, poor deployer, or bad metadata   |
+
+### API Endpoints
+
+**GET /api/intelligence** — List all token intelligence assessments
+
+```json
+{
+  "data": [
+    {
+      "id": 42,
+      "contractAddress": "0x...",
+      "chain": "base",
+      "name": "Pepe Coin",
+      "symbol": "PEPE",
+      "aiCategory": "MEME",
+      "aiRecommendation": "CAUTION",
+      "aiConfidence": 75,
+      "aiSummary": "Meme-themed token with moderate risk characteristics. Low risk profile.",
+      "deployerReputation": 55,
+      "deployerGrade": "Average",
+      "discoveredAt": "2026-07-19T12:00:00.000Z"
+    }
+  ],
+  "pagination": { "total": 42, "limit": 50, "offset": 0 },
+  "aggregations": {
+    "categories": { "MEME": 15, "AI": 8, "B20": 5, "UNKNOWN": 14 },
+    "recommendations": { "SAFE": 12, "WATCH": 5, "CAUTION": 18, "AVOID": 7 }
+  }
+}
+```
+
+Query parameters: `category`, `recommendation`, `chain`, `limit`, `offset`
+
+**GET /api/intelligence/:contract** — Single token intelligence assessment
+
+```json
+{
+  "data": {
+    "contractAddress": "0x...",
+    "chain": "base",
+    "name": "Pepe Coin",
+    "symbol": "PEPE",
+    "aiCategory": "MEME",
+    "aiRecommendation": "CAUTION",
+    "aiConfidence": 75,
+    "aiSummary": "Meme-themed token with moderate risk characteristics. Low risk profile.",
+    "deployerReputation": 55,
+    "deployerGrade": "Average",
+    "metadataConfidence": 85,
+    "isB20": false,
+    "b20Confidence": 0,
+    "discoveredAt": "2026-07-19T12:00:00.000Z"
+  }
+}
+```
+
+### Dashboard Features
+
+- **AI Intelligence page**: Sidebar navigation → filterable grid by category/recommendation with category count cards and recommendation distribution bar
+- **Token cards**: Each card shows AI category badge (color-coded), recommendation badge, confidence %, and generated summary text
+- **Category stat cards**: Quick overview of how many tokens fall into each category (MEME, AI, DEFI, etc.)
+
+### Known Limitations
+
+- Classification is **keyword-based** — subtle or obfuscated names may be miscategorized
+- No multi-language support — only English keywords are matched
+- Summary is **template-based**, not generated by an LLM
+- Recommendations use simple thresholds and may miss nuanced risk profiles
+- No historical tracking — category/recommendation is static once assigned
 
 ## Roadmap
 

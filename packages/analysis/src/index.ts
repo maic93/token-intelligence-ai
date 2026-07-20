@@ -11,6 +11,13 @@ export type {
   DeployerReputation,
   ReputationGrade,
 } from './deployer-reputation.js';
+export { analyzeToken } from './token-intelligence.js';
+export type {
+  TokenIntelligence,
+  TokenCategory,
+  TokenRecommendation,
+  IntelligenceInput,
+} from './token-intelligence.js';
 export type {
   RiskLevel,
   RiskFactor,

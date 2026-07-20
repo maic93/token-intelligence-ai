@@ -16,6 +16,7 @@ import { AnalyticsPage } from './components/AnalyticsPage';
 import { WatchlistPanel } from './components/WatchlistPanel';
 import { B20Dashboard } from './components/B20Dashboard';
 import { DeployersDashboard } from './components/DeployersDashboard';
+import { AIIntelligenceDashboard } from './components/AIIntelligenceDashboard';
 import { AlertNotification } from './components/AlertNotification';
 import { AlertBell } from './components/AlertBell';
 
@@ -248,6 +249,7 @@ export default function App() {
               />
             )}
             {activeView === 'b20' && <B20Dashboard />}
+            {activeView === 'intelligence' && <AIIntelligenceDashboard />}
             {activeView === 'deployers' && <DeployersDashboard />}
             {activeView === 'chains' && (
               <div className="main-with-sidebar">

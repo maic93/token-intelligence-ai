@@ -9,6 +9,7 @@ import type {
   DeployerListResponse,
   DeployerDetailResponse,
   B20ListResponse,
+  IntelligenceListResponse,
 } from './types';
 
 const API_BASE = '/api';
@@ -132,6 +133,40 @@ export function fetchB20Tokens(
   if (params.minConfidence !== undefined) search.set('minConfidence', String(params.minConfidence));
   if (params.sort) search.set('sort', params.sort);
   return fetchJson<B20ListResponse>(`${API_BASE}/b20?${search.toString()}`, signal);
+}
+
+export function fetchIntelligence(
+  params: {
+    category?: string;
+    recommendation?: string;
+    chain?: string;
+    limit?: number;
+    offset?: number;
+  },
+  signal?: AbortSignal,
+): Promise<IntelligenceListResponse> {
+  const search = new URLSearchParams();
+  if (params.category) search.set('category', params.category);
+  if (params.recommendation) search.set('recommendation', params.recommendation);
+  if (params.chain) search.set('chain', params.chain);
+  if (params.limit) search.set('limit', String(params.limit));
+  if (params.offset) search.set('offset', String(params.offset));
+  return fetchJson<IntelligenceListResponse>(
+    `${API_BASE}/intelligence?${search.toString()}`,
+    signal,
+  );
+}
+
+export function fetchIntelligenceDetail(
+  contractAddress: string,
+  chain?: string,
+  signal?: AbortSignal,
+): Promise<{ data: IntelligenceListResponse['data'][0] }> {
+  const search = chain ? `?chain=${encodeURIComponent(chain)}` : '';
+  return fetchJson(
+    `${API_BASE}/intelligence/${encodeURIComponent(contractAddress)}${search}`,
+    signal,
+  );
 }
 
 export function createWebSocketUrl(): string {

@@ -158,6 +158,27 @@ export function TokenCard({
             )}
           </span>
         </div>
+        {token.aiCategory && token.aiRecommendation && (
+          <div className="token-detail-item" style={{ gridColumn: '1 / -1' }}>
+            <span className="token-detail-label">AI</span>
+            <span
+              className="token-detail-value"
+              style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}
+            >
+              <span className={`intel-category-badge-${token.aiCategory.toLowerCase()}`}>
+                {token.aiCategory}
+              </span>
+              <span className={`intel-rec-badge-${token.aiRecommendation.toLowerCase()}`}>
+                {token.aiRecommendation}
+              </span>
+              {token.aiConfidence !== undefined && (
+                <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>
+                  {token.aiConfidence}%
+                </span>
+              )}
+            </span>
+          </div>
+        )}
       </div>
 
       <div className="token-card-actions">

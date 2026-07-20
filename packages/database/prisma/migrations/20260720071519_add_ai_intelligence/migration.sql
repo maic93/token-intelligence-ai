@@ -1,0 +1,5 @@
+-- AlterTable
+ALTER TABLE "tokens" ADD COLUMN     "aiCategory" TEXT NOT NULL DEFAULT 'UNKNOWN',
+ADD COLUMN     "aiConfidence" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN     "aiRecommendation" TEXT NOT NULL DEFAULT 'CAUTION',
+ADD COLUMN     "aiSummary" TEXT NOT NULL DEFAULT '';

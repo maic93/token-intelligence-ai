@@ -22,6 +22,10 @@ model Token {
   b20Confidence   Int             @default(0)
   deployerReputation Int         @default(0)
   deployerGrade   String          @default("Unknown")
+  aiCategory       String          @default("UNKNOWN")
+  aiRecommendation String         @default("CAUTION")
+  aiConfidence     Int             @default(0)
+  aiSummary        String          @default("")
   discoveredAt    DateTime        @default(now())
   blockNumber     BigInt
   blockTimestamp  DateTime
