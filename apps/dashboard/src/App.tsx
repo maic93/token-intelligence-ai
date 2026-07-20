@@ -10,10 +10,10 @@ import { StatsSection } from './components/StatsSection';
 import { AnalyticsCards } from './components/AnalyticsCards';
 import { ChartsSection } from './components/ChartsSection';
 import { TokenGrid } from './components/TokenGrid';
-import { ChainPanel } from './components/ChainPanel';
+import { ChainsDashboard } from './components/ChainsDashboard';
 import { ConnectionBanner } from './components/ConnectionBanner';
 import { AnalyticsPage } from './components/AnalyticsPage';
-import { WatchlistPanel } from './components/WatchlistPanel';
+
 import { B20Dashboard } from './components/B20Dashboard';
 import { DeployersDashboard } from './components/DeployersDashboard';
 import { AIIntelligenceDashboard } from './components/AIIntelligenceDashboard';
@@ -42,7 +42,6 @@ export default function App() {
   const newTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
   const {
-    watchlist,
     alerts,
     unreadCount,
     isWatched,
@@ -253,21 +252,7 @@ export default function App() {
             {activeView === 'intelligence' && <AIIntelligenceDashboard />}
             {activeView === 'deployers' && <DeployersDashboard />}
             {activeView === 'wallets' && <WalletList />}
-            {activeView === 'chains' && (
-              <div className="main-with-sidebar">
-                <div className="main-left">
-                  <HeroSection />
-                  <ChainPanel />
-                </div>
-                <aside className="main-right">
-                  <WatchlistPanel
-                    items={watchlist}
-                    onRemove={removeFromWatchlist}
-                    liveTokens={liveTokens}
-                  />
-                </aside>
-              </div>
-            )}
+            {activeView === 'chains' && <ChainsDashboard />}
             {activeView === 'settings' && (
               <div className="empty-state">
                 <div className="empty-state-icon">

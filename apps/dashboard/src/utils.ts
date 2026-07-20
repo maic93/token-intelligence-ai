@@ -1,12 +1,30 @@
+const EXPLORERS: Record<string, string> = {
+  base: 'https://basescan.org',
+  robinhood: 'https://robinhoodchain.blockscout.com',
+  ethereum: 'https://etherscan.io',
+  polygon: 'https://polygonscan.com',
+};
+
 export function explorerUrl(chain: string, address: string): string {
-  const explorers: Record<string, string> = {
-    base: 'https://basescan.org',
-    robinhood: 'https://explorer.robinhood.com',
-    ethereum: 'https://etherscan.io',
-    polygon: 'https://polygonscan.com',
-  };
-  const base = explorers[chain] ?? explorers.base;
+  const base = EXPLORERS[chain] ?? EXPLORERS.base;
   return `${base}/address/${address}`;
+}
+
+export function txExplorerUrl(chain: string, txHash: string): string {
+  const base = EXPLORERS[chain] ?? EXPLORERS.base;
+  return `${base}/tx/${txHash}`;
+}
+
+export function getExplorerAddress(chain: string, address: string): string {
+  return explorerUrl(chain, address);
+}
+
+export function getExplorerContract(chain: string, address: string): string {
+  return explorerUrl(chain, address);
+}
+
+export function getChainExplorer(chain: string): string {
+  return EXPLORERS[chain] ?? EXPLORERS.base;
 }
 
 export function shortAddress(address: string): string {

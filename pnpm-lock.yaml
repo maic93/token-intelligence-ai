@@ -194,7 +194,11 @@ importers:
         specifier: ^4.6.0
         version: 4.7.1
 
-  packages/blockchain: {}
+  packages/blockchain:
+    dependencies:
+      '@token-intelligence-ai/shared':
+        specifier: workspace:*
+        version: link:../shared
 
   packages/config:
     dependencies:

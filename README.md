@@ -40,6 +40,7 @@ Token Intelligence AI is an open-source platform that continuously indexes suppo
 - **Deployer Intelligence Engine** — Wallet reputation scoring (0–100, 5 grades), deployer analytics, risk distribution, metadata quality, B20 history
 - **Metadata Validation Pipeline** — Strict ERC-20 metadata validation with rejection logging, confidence scoring (0–100), and sanitization of names/symbols
 - **AI Token Intelligence Engine** — Deterministic explainable-AI pipeline that classifies every token into 8 categories (MEME, AI, DEFI, GAMING, NFT, B20, UTILITY, UNKNOWN), generates human-readable summaries, assigns a confidence score, and produces a recommendation (SAFE, WATCH, CAUTION, AVOID) — all without external APIs
+- **Multi-Chain Intelligence Engine** — Central Chain Registry with canonical chain definitions, generic EVM worker manager, automatic multi-chain discovery, per-chain health monitoring (Healthy/Slow/Behind/Offline), RPC latency tracking, explorer abstraction layer, chain analytics dashboard
 
 ---
 
@@ -1169,6 +1170,144 @@ Whenever a token is indexed and its analysis completes, the wallet profile for i
 - Recommendations use simple thresholds and may miss nuanced risk profiles
 - No historical tracking — category/recommendation is static once assigned
 
+## Multi-Chain Intelligence Engine
+
+The Multi-Chain Intelligence Engine provides a universal chain abstraction layer that makes adding new EVM chains a zero-code-change operation.
+
+### Architecture
+
+```
+Chain Registry (packages/shared/src/chains.ts)
+        │
+        ▼
+ChainWorkerManager (apps/indexer/src/worker-manager.ts)
+        │
+        ├── for each enabled chain ───► EvmWorker (generic)
+        │                                     │
+        │                                     ▼
+        │                              Token Discovery
+        │                                     │
+        │                                     ▼
+        │                              AI Intelligence
+        │
+        └── ChainHealthMonitor ───► Per-chain status tracking
+                                      Healthy / Slow / Behind / Offline
+```
+
+### Chain Registry
+
+One source of truth: `packages/shared/src/chains.ts`
+
+```typescript
+interface ChainDefinition {
+  name: ChainName;
+  chainId: number;
+  displayName: string;
+  rpcUrl: string;
+  explorerUrl: string;
+  enabled: boolean;
+  nativeCurrency: { name: string; symbol: string; decimals: number };
+  supportsContracts: boolean;
+}
+```
+
+| Chain     | chainId | Explorer                              | Native Currency |
+| --------- | ------- | ------------------------------------- | --------------- |
+| Base      | 8453    | https://basescan.org                  | ETH             |
+| Ethereum  | 1       | https://etherscan.io                  | ETH             |
+| Polygon   | 137     | https://polygonscan.com               | POL             |
+| Robinhood | 4663    | https://robinhoodchain.blockscout.com | ETH             |
+
+### Worker Manager
+
+The `ChainWorkerManager` (TASK 4) loops through every enabled chain from the registry and spawns a generic EVM worker for each. Adding a new chain requires:
+
+1. Add entry to `CANONICAL_CHAINS` in `packages/shared/src/chains.ts`
+2. Set `{NAME}_RPC_URL` and `ENABLE_{NAME}` in environment
+
+Zero code changes to the indexer.
+
+### Chain Health Monitor
+
+The `ChainHealthMonitor` continuously evaluates:
+
+| Status  | Condition                                            |
+| ------- | ---------------------------------------------------- |
+| Healthy | Latency ≤ 2s, few failures, not behind               |
+| Slow    | Latency > 2s                                         |
+| Behind  | More than 100 blocks behind the tip                  |
+| Offline | RPC unreachable or failure rate exceeds success rate |
+
+Health is exposed via `GET /api/chains/analytics` and broadcast via WebSocket on status changes.
+
+### Explorer Abstraction
+
+Instead of hardcoded explorer URLs, use shared utilities:
+
+```typescript
+getExplorerAddress(chain, address); // → https://{explorer}/address/{address}
+getExplorerTx(chain, txHash); // → https://{explorer}/tx/{txHash}
+getExplorerContract(chain, address); // → https://{explorer}/address/{address}
+getChainExplorer(chain); // → https://{explorer}
+```
+
+Works automatically for Base, Robinhood, Ethereum, and Polygon.
+
+### Dashboard
+
+- **Chains page**: Cards for each chain showing current block, RPC latency, status, token/deployer counts, last sync, explorer link, and health badge
+- **Live updates**: Dashboard auto-refreshes every 30 seconds and receives WebSocket push on chain status changes
+- **Health badges**: Color-coded (green=Healthy, yellow=Slow, orange=Behind, red=Offline)
+
+### Adding a New Chain
+
+1. Add chain to `CANONICAL_CHAINS` in `packages/shared/src/chains.ts`
+2. Add to `CHAIN_NAMES` and set default in `ENABLE_MAP`
+3. Set `{NAME}_RPC_URL` and optionally `ENABLE_{NAME}` in `.env`
+4. The `ChainWorkerManager` will automatically discover and start indexing
+
+No changes needed to the indexer, processor, or dashboard — the chain is automatically registered.
+
+### Robinhood Configuration
+
+| Property     | Value                                              |
+| ------------ | -------------------------------------------------- |
+| Chain ID     | 4663                                               |
+| Display Name | Robinhood Chain                                    |
+| Explorer     | https://robinhoodchain.blockscout.com              |
+| RPC          | `ROBINHOOD_RPC_URL` environment variable           |
+| Native       | ETH (Ether)                                        |
+| Enable       | Enabled by default when RPC URL is set             |
+| Blockscout   | Primary explorer (not hoodscan.ai or robinscan.io) |
+
+### API
+
+**GET /api/chains/analytics** — Per-chain analytics
+
+```json
+{
+  "data": {
+    "chains": [
+      {
+        "name": "base",
+        "chainId": 8453,
+        "displayName": "Base",
+        "enabled": true,
+        "tokenCount": 142,
+        "deployerCount": 89,
+        "lastBlock": "24567890",
+        "blocksBehind": 0,
+        "health": "Healthy",
+        "status": "connected",
+        "rpcLatency": 340,
+        "contractsToday": 12,
+        "contractsHour": 3
+      }
+    ]
+  }
+}
+```
+
 ## Roadmap
 
 ### Current
@@ -1179,6 +1318,12 @@ Whenever a token is indexed and its analysis completes, the wallet profile for i
 - [x] Analytics engine (token, holder, liquidity, transaction, deployer, chain)
 - [x] Docker multi-stage deployment with healthchecks
 - [x] Prometheus metrics and structured logging
+- [x] Central Chain Registry (shared source of truth)
+- [x] Generic EVM worker (ChainWorkerManager)
+- [x] Chain health monitoring and RPC latency tracking
+- [x] Explorer abstraction layer
+- [x] Chain analytics endpoint and dashboard
+- [x] Robinhood Chain (chainId 4663, Blockscout explorer)
 
 ### Current
 

@@ -1,16 +1,16 @@
-export type ChainName = 'base' | 'robinhood' | 'ethereum' | 'polygon';
+import {
+  CANONICAL_CHAINS,
+  CHAIN_NAMES,
+  ENABLE_MAP,
+  getCanonicalChain,
+} from '@token-intelligence-ai/shared';
+import type { ChainName, ChainDefinition } from '@token-intelligence-ai/shared';
 
-export const CHAIN_NAMES: ChainName[] = ['base', 'robinhood', 'ethereum', 'polygon'];
+export type { ChainName, ChainDefinition } from '@token-intelligence-ai/shared';
 
-export interface ChainConfig {
-  name: ChainName;
-  chainId: number;
-  displayName: string;
-  rpcUrl: string;
-  explorerUrl: string;
-  nativeCurrency: { name: string; symbol: string; decimals: number };
-  enabled: boolean;
-}
+export const CHAIN_NAMES_EXPORT: ChainName[] = [...CHAIN_NAMES];
+
+export type ChainConfig = ChainDefinition;
 
 function readRpcUrl(name: ChainName): string {
   const envKey = `${name.toUpperCase()}_RPC_URL`;
@@ -19,49 +19,19 @@ function readRpcUrl(name: ChainName): string {
   return url;
 }
 
-const CHAIN_DEFS: Record<ChainName, Omit<ChainConfig, 'rpcUrl' | 'enabled'>> = {
-  base: {
-    name: 'base',
-    chainId: 8453,
-    displayName: 'Base',
-    explorerUrl: 'https://basescan.org',
-    nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
-  },
-  ethereum: {
-    name: 'ethereum',
-    chainId: 1,
-    displayName: 'Ethereum',
-    explorerUrl: 'https://etherscan.io',
-    nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
-  },
-  polygon: {
-    name: 'polygon',
-    chainId: 137,
-    displayName: 'Polygon',
-    explorerUrl: 'https://polygonscan.com',
-    nativeCurrency: { name: 'MATIC', symbol: 'MATIC', decimals: 18 },
-  },
-  robinhood: {
-    name: 'robinhood',
-    chainId: 0,
-    displayName: 'Robinhood',
-    explorerUrl: 'https://explorer.robinhood.com',
-    nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
-  },
-};
-
 function isExplicitlyEnabled(name: ChainName): boolean {
-  if (name === 'base' || name === 'robinhood') return true;
+  const defaults = ENABLE_MAP[name];
+  if (defaults) return true;
   const envKey = `ENABLE_${name.toUpperCase()}`;
   return process.env[envKey] === 'true';
 }
 
 export function loadChainConfig(name: ChainName): ChainConfig {
-  const def = CHAIN_DEFS[name];
+  const def = getCanonicalChain(name);
   const rpcUrl = readRpcUrl(name);
   const hasRpc = rpcUrl.length > 0;
-  const isEnabled =
-    name === 'base' || name === 'robinhood' ? hasRpc : hasRpc && isExplicitlyEnabled(name);
+  const defaults = ENABLE_MAP[name];
+  const isEnabled = defaults ? hasRpc : hasRpc && isExplicitlyEnabled(name);
   return {
     ...def,
     rpcUrl,
@@ -82,5 +52,5 @@ export function getChainConfig(name: ChainName): ChainConfig {
 }
 
 export function getChainDisplayName(name: ChainName): string {
-  return CHAIN_DEFS[name]?.displayName ?? name;
+  return CANONICAL_CHAINS[name]?.displayName ?? name;
 }
