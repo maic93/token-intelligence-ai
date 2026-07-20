@@ -10,6 +10,9 @@ import type {
   DeployerDetailResponse,
   B20ListResponse,
   IntelligenceListResponse,
+  WalletListResponse,
+  WalletDetailResponse,
+  WalletSearchResponse,
 } from './types';
 
 const API_BASE = '/api';
@@ -165,6 +168,41 @@ export function fetchIntelligenceDetail(
   const search = chain ? `?chain=${encodeURIComponent(chain)}` : '';
   return fetchJson(
     `${API_BASE}/intelligence/${encodeURIComponent(contractAddress)}${search}`,
+    signal,
+  );
+}
+
+export function fetchWallets(
+  params: {
+    page?: number;
+    limit?: number;
+    grade?: string;
+    label?: string;
+    sort?: string;
+    search?: string;
+  },
+  signal?: AbortSignal,
+): Promise<WalletListResponse> {
+  const search = new URLSearchParams();
+  if (params.page) search.set('page', String(params.page));
+  if (params.limit) search.set('limit', String(params.limit));
+  if (params.grade) search.set('grade', params.grade);
+  if (params.label) search.set('label', params.label);
+  if (params.sort) search.set('sort', params.sort);
+  if (params.search) search.set('search', params.search);
+  return fetchJson<WalletListResponse>(`${API_BASE}/wallets?${search.toString()}`, signal);
+}
+
+export function fetchWallet(address: string, signal?: AbortSignal): Promise<WalletDetailResponse> {
+  return fetchJson<WalletDetailResponse>(
+    `${API_BASE}/wallets/${encodeURIComponent(address)}`,
+    signal,
+  );
+}
+
+export function searchWallets(q: string, signal?: AbortSignal): Promise<WalletSearchResponse> {
+  return fetchJson<WalletSearchResponse>(
+    `${API_BASE}/wallets/search?q=${encodeURIComponent(q)}`,
     signal,
   );
 }

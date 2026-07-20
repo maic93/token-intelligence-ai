@@ -18,6 +18,13 @@ export type {
   TokenRecommendation,
   IntelligenceInput,
 } from './token-intelligence.js';
+export { analyzeWallet } from './wallet-intelligence.js';
+export type {
+  WalletAnalysis,
+  WalletMetrics,
+  WalletLabel,
+  WalletGrade,
+} from './wallet-intelligence.js';
 export type {
   RiskLevel,
   RiskFactor,

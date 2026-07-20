@@ -1077,6 +1077,90 @@ Query parameters: `category`, `recommendation`, `chain`, `limit`, `offset`
 - **Token cards**: Each card shows AI category badge (color-coded), recommendation badge, confidence %, and generated summary text
 - **Category stat cards**: Quick overview of how many tokens fall into each category (MEME, AI, DEFI, etc.)
 
+## Wallet Intelligence Engine
+
+The Wallet Intelligence Engine automatically profiles every deployer wallet and enriches every token with creator intelligence. It is fully deterministic and computed entirely from indexed on-chain data — no external AI APIs are used.
+
+### Architecture
+
+```
+Token Indexed
+    │
+    ▼
+Recompute Wallet Profile (single wallet, never all)
+    │
+    ├── Compute Metrics ─── totalDeployments, highRiskTokens, b20Tokens,
+    │                       avgRisk, avgMetadataConfidence, avgAiConfidence,
+    │                       walletAgeDays, deploymentSpanDays
+    │
+    ├── Reputation Score ─── 0-100 weighted from metrics
+    │
+    ├── Grade ─── Excellent / Good / Average / Poor / Dangerous
+    │
+    ├── Labels ─── Deterministic labels based on thresholds
+    │
+    └── Summary ─── Template-generated human-readable summary
+```
+
+### Reputation Scoring (0–100)
+
+| Signal                                        | Adjustment |
+| --------------------------------------------- | ---------- |
+| Baseline                                      | 50         |
+| High metadata confidence (≥90)                | +15        |
+| Good metadata confidence (≥70)                | +8         |
+| Low metadata confidence (<50)                 | −8         |
+| ≥80% successful tokens with ≥5 deployments    | +15        |
+| ≥60% successful tokens with ≥3 deployments    | +8         |
+| >50% high-risk with ≥3 deployments            | −15        |
+| >30% high-risk with ≥3 deployments            | −8         |
+| Average risk ≤20                              | +10        |
+| Average risk ≤40                              | +5         |
+| Average risk ≥80                              | −15        |
+| Average risk ≥60                              | −8         |
+| 10+ total deployments                         | +5         |
+| B20 tokens exist                              | −5         |
+| ≥5 deployments in <1 day                      | −15        |
+| ≥3 deployments in <0.5 day                    | −10        |
+| ≥10 deployments over >30 days                 | +10        |
+| Average AI confidence ≥80                     | +5         |
+| Average AI confidence <30 with ≥3 deployments | −5         |
+
+### Labels
+
+| Label               | Condition                                |
+| ------------------- | ---------------------------------------- |
+| `NEW_DEPLOYER`      | Exactly 1 deployment                     |
+| `SERIAL_DEPLOYER`   | 10+ deployments                          |
+| `B20_CREATOR`       | 3+ B20 tokens                            |
+| `HIGH_RISK_CREATOR` | 3+ high-risk tokens                      |
+| `SPAMMER`           | ≥5 deployments with Poor/Dangerous grade |
+| `SUSPICIOUS`        | 5+ high-risk tokens                      |
+| `TRUSTED_CREATOR`   | Excellent/Good grade with 3+ deployments |
+| `UTILITY_BUILDER`   | 5+ deployments with 0 high-risk          |
+| `MEME_FACTORY`      | 1+ B20 tokens                            |
+
+### API
+
+**GET /api/wallets** — Paginated wallet list with filtering
+
+```
+?page=1&limit=20&grade=Good&label=TRUSTED_CREATOR&sort=reputation_desc&search=0x
+```
+
+**GET /api/wallets/:address** — Full wallet profile with risk distribution, AI category distribution, B20 distribution, deployment timeline, and recent tokens
+
+### Pipeline Integration
+
+Whenever a token is indexed and its analysis completes, the wallet profile for its deployer is recomputed automatically — never scanning every wallet.
+
+### Dashboard
+
+- **Wallet Intelligence page**: Table with grade, reputation, deployments, average risk, labels, and last seen
+- **Filtering**: By grade, label, sort (reputation, deployments, risk, last active)
+- **Wallet detail modal**: Copy address, reputation grade/score, deployment counts, risk distribution pie chart, AI category pie chart, B20 distribution, metadata confidence, deployment timeline bar chart, recent deployments list, explorer link
+- **Stat cards**: Total Wallets, Trusted Wallets, Suspicious Wallets, Average Reputation, Serial Deployers
+
 ### Known Limitations
 
 - Classification is **keyword-based** — subtle or obfuscated names may be miscategorized
