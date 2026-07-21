@@ -149,3 +149,79 @@ model SyncCursor {
   @@unique([id, chain])
   @@map("sync_cursors")
 }
+
+model AnalyticsSnapshot {
+  id                       String   @id @default(uuid())
+  period                   String
+  timestamp                DateTime
+  tokensIndexed            Int      @default(0)
+  highRiskTokens           Int      @default(0)
+  averageRisk              Float?
+  averageMetadataConfidence Float?
+  averageAIConfidence      Float?
+  uniqueDeployers          Int      @default(0)
+  totalDeployments         Int      @default(0)
+  createdAt                DateTime @default(now())
+
+  @@unique([period, timestamp])
+  @@index([period])
+  @@index([timestamp])
+  @@map("analytics_snapshots")
+}
+
+model CategoryTrend {
+  id              String   @id @default(uuid())
+  category        String
+  period          String
+  timestamp       DateTime
+  tokensIndexed   Int      @default(0)
+  averageRisk     Float?
+  averageConfidence Float?
+  uniqueDeployers Int      @default(0)
+  createdAt       DateTime @default(now())
+
+  @@unique([category, period, timestamp])
+  @@index([category])
+  @@index([period])
+  @@index([timestamp])
+  @@map("category_trends")
+}
+
+model ChainTrend {
+  id                    String   @id @default(uuid())
+  chain                 String
+  period                String
+  timestamp             DateTime
+  tokensIndexed         Int      @default(0)
+  averageRisk           Float?
+  averageMetadataConfidence Float?
+  averageAIConfidence   Float?
+  averageDeployerReputation Float?
+  uniqueDeployers       Int      @default(0)
+  createdAt             DateTime @default(now())
+
+  @@unique([chain, period, timestamp])
+  @@index([chain])
+  @@index([period])
+  @@index([timestamp])
+  @@map("chain_trends")
+}
+
+model DeployerTrend {
+  id                    String   @id @default(uuid())
+  wallet                String
+  period                String
+  timestamp             DateTime
+  tokensIndexed         Int      @default(0)
+  averageRisk           Float?
+  averageMetadataConfidence Float?
+  averageAIConfidence   Float?
+  reputation            Int      @default(50)
+  createdAt             DateTime @default(now())
+
+  @@unique([wallet, period, timestamp])
+  @@index([wallet])
+  @@index([period])
+  @@index([timestamp])
+  @@map("deployer_trends")
+}

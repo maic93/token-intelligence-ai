@@ -448,3 +448,79 @@ export interface AlertItem {
   createdAt: string;
   seen: boolean;
 }
+
+export interface TrendOverview {
+  tokensToday: number;
+  tokensThisHour: number;
+  averageRisk: number | null;
+  averageReputation: number | null;
+  averageMetadata: number | null;
+  averageAIConfidence: number | null;
+}
+
+export interface TrendSnapshot {
+  timestamp: string;
+  tokensIndexed: number;
+  highRiskTokens: number;
+  averageRisk: number | null;
+  averageMetadataConfidence: number | null;
+  averageAIConfidence: number | null;
+  uniqueDeployers: number;
+}
+
+export interface CategoryTrendSummary {
+  category: string;
+  tokens24h: number;
+  tokens7d: number;
+  growthPercent: number | null;
+  averageRisk: number | null;
+  averageConfidence: number | null;
+}
+
+export interface ChainTrendSummary {
+  chain: string;
+  tokensDay: number;
+  tokensHour: number;
+  averageRisk: number | null;
+  averageMetadataConfidence: number | null;
+  averageDeployerReputation: number | null;
+}
+
+export interface DeployerTrendSummary {
+  wallet: string;
+  tokensIndexed: number;
+  averageRisk: number | null;
+  averageMetadataConfidence: number | null;
+  averageAIConfidence: number | null;
+  reputation: number;
+  grade: string;
+}
+
+export interface TrendingTokenEntry {
+  contractAddress: string;
+  chain: string;
+  name: string;
+  symbol: string;
+  aiConfidence: number;
+  b20Confidence: number;
+  metadataConfidence: number;
+  riskScore: number | null;
+  riskLevel: string | null;
+  discoveredAt: string;
+  deployerReputation: number;
+}
+
+export interface TrendData {
+  overview: TrendOverview;
+  hourly: TrendSnapshot[];
+  daily: TrendSnapshot[];
+  weekly: TrendSnapshot[];
+  categories: CategoryTrendSummary[];
+  chains: ChainTrendSummary[];
+  deployers: DeployerTrendSummary[];
+  trendingTokens: TrendingTokenEntry[];
+}
+
+export interface TrendsResponse {
+  data: TrendData;
+}

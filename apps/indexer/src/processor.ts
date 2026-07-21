@@ -2,6 +2,7 @@ import {
   AnalysisRepository,
   TokenRepository,
   WalletRepository,
+  TrendRepository,
 } from '@token-intelligence-ai/database';
 import type { Logger } from '@token-intelligence-ai/shared';
 import type { ChainConfig } from '@token-intelligence-ai/blockchain';
@@ -27,6 +28,7 @@ export class BlockProcessor {
     private readonly tokenRepo: TokenRepository,
     private readonly analysisRepo: AnalysisRepository,
     private readonly walletRepo: WalletRepository,
+    private readonly trendRepo: TrendRepository,
     private readonly log: Logger,
   ) {}
 
@@ -352,9 +354,81 @@ export class BlockProcessor {
       }
 
       await this.recomputeWalletProfile(deployer, blockTimestamp);
+
+      await this.updateTrends({
+        chain: this.chain.name,
+        deployer,
+        aiCategory: intelligence.category,
+        riskScore: analysisResult.riskScore,
+        riskLevel: analysisResult.riskLevel,
+        metadataConfidence,
+        aiConfidence: Math.round(intelligence.confidence),
+        deployerReputation: repResult.score,
+        discoveredAt: blockTimestamp,
+        isB20: b20Classification.isB20,
+      });
     } catch (error) {
       this.log.error('Analysis failed', {
         contractAddress,
+        error: String(error),
+      });
+    }
+  }
+
+  private async updateTrends(input: {
+    chain: string;
+    deployer: string;
+    aiCategory: string;
+    riskScore: number;
+    riskLevel: string;
+    metadataConfidence: number;
+    aiConfidence: number;
+    deployerReputation: number;
+    discoveredAt: Date;
+    isB20: boolean;
+  }): Promise<void> {
+    try {
+      const isHighRisk = input.riskLevel === 'HIGH' || input.riskLevel === 'CRITICAL';
+      const periods = ['hourly', 'daily', 'weekly'] as const;
+
+      for (const period of periods) {
+        await this.trendRepo.upsertSnapshot(period, input.discoveredAt, {
+          tokensIndexed: 1,
+          highRiskTokens: isHighRisk ? 1 : 0,
+          averageRisk: input.riskScore,
+          averageMetadataConfidence: input.metadataConfidence,
+          averageAIConfidence: input.aiConfidence,
+          uniqueDeployers: 1,
+          totalDeployments: 1,
+        });
+
+        await this.trendRepo.upsertCategoryTrend(input.aiCategory, period, input.discoveredAt, {
+          tokensIndexed: 1,
+          averageRisk: input.riskScore,
+          averageConfidence: input.aiConfidence,
+          uniqueDeployers: 1,
+        });
+
+        await this.trendRepo.upsertChainTrend(input.chain, period, input.discoveredAt, {
+          tokensIndexed: 1,
+          averageRisk: input.riskScore,
+          averageMetadataConfidence: input.metadataConfidence,
+          averageAIConfidence: input.aiConfidence,
+          averageDeployerReputation: input.deployerReputation,
+          uniqueDeployers: 1,
+        });
+
+        await this.trendRepo.upsertDeployerTrend(input.deployer, period, input.discoveredAt, {
+          tokensIndexed: 1,
+          averageRisk: input.riskScore,
+          averageMetadataConfidence: input.metadataConfidence,
+          averageAIConfidence: input.aiConfidence,
+          reputation: input.deployerReputation,
+        });
+      }
+    } catch (error) {
+      this.log.error('Failed to update trends', {
+        chain: input.chain,
         error: String(error),
       });
     }

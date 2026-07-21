@@ -33,3 +33,17 @@ export type {
   TokenSecurityMetrics,
   TokenAnalysisData,
 } from './types.js';
+export {
+  getPeriodTimestamp,
+  computeTrendUpdate,
+  computeOverview,
+  computeCategoryGrowth,
+} from './trend-engine.js';
+export type {
+  TrendPeriod,
+  TrendUpdateInput,
+  TrendOverview,
+  CategoryTrendData,
+  ChainTrendData,
+  DeployerTrendData,
+} from './trend-engine.js';
