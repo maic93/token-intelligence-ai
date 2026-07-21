@@ -3,6 +3,7 @@ import {
   TokenRepository,
   WalletRepository,
   TrendRepository,
+  SmartMoneyRepository,
 } from '@token-intelligence-ai/database';
 import type { Logger } from '@token-intelligence-ai/shared';
 import type { ChainConfig } from '@token-intelligence-ai/blockchain';
@@ -12,6 +13,7 @@ import {
   calculateDeployerReputation,
   analyzeToken,
   analyzeWallet,
+  calculateSmartMoneyScore,
 } from '@token-intelligence-ai/analysis';
 
 import type { RpcClient, RpcTransaction } from './rpc.js';
@@ -29,6 +31,7 @@ export class BlockProcessor {
     private readonly analysisRepo: AnalysisRepository,
     private readonly walletRepo: WalletRepository,
     private readonly trendRepo: TrendRepository,
+    private readonly smartMoneyRepo: SmartMoneyRepository,
     private readonly log: Logger,
   ) {}
 
@@ -355,6 +358,8 @@ export class BlockProcessor {
 
       await this.recomputeWalletProfile(deployer, blockTimestamp);
 
+      await this.recomputeSmartMoneyProfile(deployer);
+
       await this.updateTrends({
         chain: this.chain.name,
         deployer,
@@ -516,6 +521,108 @@ export class BlockProcessor {
       });
     } catch (error) {
       this.log.error('Failed to recompute wallet profile', { deployer, error: String(error) });
+    }
+  }
+
+  private async recomputeSmartMoneyProfile(deployer: string): Promise<void> {
+    try {
+      const tokens = await this.tokenRepo.getTokensByDeployer(deployer);
+      if (tokens.length === 0) return;
+
+      const analyses = await this.analysisRepo.getAnalysesByTokenIds(tokens.map((t) => t.id));
+      const analysisMap = new Map(analyses.map((a) => [a.tokenId, a]));
+
+      let successful = 0;
+      let failed = 0;
+      let highRisk = 0;
+      let totalRisk = 0;
+      let riskCount = 0;
+      let totalMetaConf = 0;
+      let totalAiConf = 0;
+      let b20Count = 0;
+      const chains = new Set<string>();
+      const holdTimes: number[] = [];
+
+      for (const t of tokens) {
+        totalMetaConf += t.metadataConfidence;
+        totalAiConf += t.aiConfidence;
+        if (t.isB20) b20Count++;
+        chains.add(t.chain);
+
+        const analysis = analysisMap.get(t.id);
+        if (analysis) {
+          totalRisk += analysis.riskScore;
+          riskCount++;
+          if (analysis.riskLevel === 'LOW' || analysis.riskLevel === 'SAFE') successful++;
+          else failed++;
+          if (analysis.riskLevel === 'HIGH' || analysis.riskLevel === 'CRITICAL') highRisk++;
+        }
+
+        const now = Date.now();
+        const deployedMs = t.discoveredAt.getTime();
+        const ageDays = (now - deployedMs) / (1000 * 60 * 60 * 24);
+        if (ageDays > 0) holdTimes.push(ageDays);
+      }
+
+      const firstSeen = tokens.reduce(
+        (earliest, t) => (t.discoveredAt < earliest ? t.discoveredAt : earliest),
+        tokens[0].discoveredAt,
+      );
+      const lastSeen = tokens.reduce(
+        (latest, t) => (t.discoveredAt > latest ? t.discoveredAt : latest),
+        tokens[0].discoveredAt,
+      );
+      const walletAgeDays = Math.round((Date.now() - firstSeen.getTime()) / (1000 * 60 * 60 * 24));
+      const spanMs = lastSeen.getTime() - firstSeen.getTime();
+      const deploymentSpanDays = spanMs / (1000 * 60 * 60 * 24);
+
+      const avgHoldTimeDays =
+        holdTimes.length > 0
+          ? Math.round((holdTimes.reduce((a, b) => a + b, 0) / holdTimes.length) * 100) / 100
+          : null;
+
+      const result = calculateSmartMoneyScore({
+        wallet: deployer,
+        tokensCreated: tokens.length,
+        successfulTokens: successful,
+        failedTokens: failed,
+        highRiskTokens: highRisk,
+        averageRisk: riskCount > 0 ? Math.round(totalRisk / riskCount) : null,
+        averageMetadataConfidence: tokens.length > 0 ? totalMetaConf / tokens.length : 0,
+        averageAIConfidence: tokens.length > 0 ? totalAiConf / tokens.length : 0,
+        reputation: 50,
+        walletAgeDays,
+        deploymentSpanDays,
+        b20Count,
+        chains: Array.from(chains),
+        firstSeen,
+        lastSeen,
+      });
+
+      await this.smartMoneyRepo.upsertProfile(deployer, {
+        score: result.score,
+        grade: result.grade,
+        firstSeen,
+        lastSeen,
+        tokensCreated: tokens.length,
+        averageRisk: riskCount > 0 ? totalRisk / riskCount : null,
+        averageMetadataConfidence: tokens.length > 0 ? totalMetaConf / tokens.length : 0,
+        averageAIConfidence: tokens.length > 0 ? totalAiConf / tokens.length : 0,
+        successfulTokens: successful,
+        failedTokens: failed,
+        averageHoldTimeDays: avgHoldTimeDays,
+        winRate: result.winRate,
+        labels: result.labels,
+        summary: result.summary,
+      });
+
+      this.log.info('Smart money profile updated', {
+        deployer,
+        score: result.score,
+        grade: result.grade,
+      });
+    } catch (error) {
+      this.log.error('Failed to recompute smart money profile', { deployer, error: String(error) });
     }
   }
 }

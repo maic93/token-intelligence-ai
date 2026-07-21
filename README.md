@@ -291,6 +291,52 @@ The Historical Analytics Engine (TASK 4 of Prompt 023) tracks token indexing act
 
 ---
 
+## Smart Money Intelligence Engine
+
+Identifies wallets worth following using deterministic heuristics — no external APIs, no AI models.
+
+### Scoring Pipeline
+
+```
+Token Index → Wallet Profile → Smart Money Score → Grade + Labels
+```
+
+The `calculateSmartMoneyScore()` function in `packages/analysis/src/smart-money.ts` computes a 0–100 score from:
+
+- **Positive signals**: high reputation (+15), long activity history (+10), many successful launches (+15), low average risk (+10), high metadata confidence (+10), high AI confidence (+5), healthy deployment cadence (+8), multi-chain activity (+5), prolific creator (+5).
+- **Negative signals**: many rugs (-20), high failure rate (-10), critically high average risk (-15), rapid spam deployments (-15), very new wallet (-10), mostly meme tokens (-10).
+
+### Grades
+
+| Score Range | Grade        |
+| ----------- | ------------ |
+| 90–100      | Elite        |
+| 70–89       | Professional |
+| 50–69       | Experienced  |
+| 30–49       | Average      |
+| 15–29       | Speculative  |
+| 0–14        | Dangerous    |
+
+### Labels
+
+Automatically assigned: `Early Adopter`, `Meme Specialist`, `AI Specialist`, `DeFi Specialist`, `NFT Specialist`, `B20 Specialist`, `Multi-chain`, `Builder`, `Safe Creator`, `High Risk`, `Serial Launcher`.
+
+### Architecture
+
+- **`SmartMoneyProfile`** — Prisma model in `packages/database/prisma/schema.prisma` (table: `smart_money_profiles`).
+- **`packages/database/src/smart-money-repository.ts`** — `SmartMoneyRepository` with upsert, list, overview, and filtering methods.
+- **Automatic updates** — `recomputeSmartMoneyProfile()` called in `apps/indexer/src/processor.ts` after each token index + analysis.
+- **API** — `GET /api/smart-money` (list with page/limit/grade/label/minScore/sort), `GET /api/smart-money/overview`, `GET /api/smart-money/top`, `GET /api/smart-money/newest`, `GET /api/smart-money/grade/:grade`, `GET /api/smart-money/:wallet` (profile + deployments + categories + risk distribution).
+- **Signals** — `GET /api/signals/smart-money` returns deterministic signals: `NEW_ELITE_WALLET`, `SCORE_INCREASE`, `NEW_MULTI_CHAIN`, `SERIAL_SUCCESS`, `SERIAL_FAILURE`, `HIGH_WIN_RATE`.
+- **Dashboard** — `SmartMoneyDashboard.tsx` with grade filters, stat widgets (elite/professional/dangerous count, avg score, avg win rate), and wallet cards.
+- **Wallet Detail** — `SmartMoneyWallet.tsx` with timeline, charts, categories, risk distribution, and explorer links.
+
+### Test Coverage
+
+- **`packages/analysis/src/__tests__/smart-money.test.ts`** — 42 tests covering: grade boundaries (7), deterministic output, score bounds, empty wallet, elite wallet, spam wallet, multi-chain bonus, label assignment, penalty verification, signal reasons, summary generation, edge cases.
+
+---
+
 ## Tech Stack
 
 | Component     | Technology                                                  |

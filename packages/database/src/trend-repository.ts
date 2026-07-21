@@ -28,6 +28,10 @@ export class TrendRepository {
       averageAIConfidence: number | null;
       uniqueDeployers: number;
       totalDeployments: number;
+      averageSmartMoneyScore?: number | null;
+      eliteWallets?: number;
+      professionalWallets?: number;
+      dangerousWallets?: number;
     },
   ): Promise<void> {
     const ts = getPeriodTimestamp(period, timestamp);
