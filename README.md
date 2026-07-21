@@ -260,6 +260,37 @@ The B20 Detection Engine is a **heuristic classifier** that identifies probable 
 
 ---
 
+## Historical Analytics & Trending Intelligence
+
+The Historical Analytics Engine (TASK 4 of Prompt 023) tracks token indexing activity over time, supporting three temporal windows (hourly, daily, weekly). It generates trend snapshots, category growth rates, chain activity metrics, and deployer trends — all computed incrementally without full-DB recomputation.
+
+### Architecture
+
+- **`packages/analysis/src/trend-engine.ts`** — Pure functions for period timestamp calculation, trend update computation, overview aggregation, and category growth percentage.
+- **`packages/database/src/trend-repository.ts`** — `TrendRepository` class interfacing with Prisma models for upsert/get operations on snapshots, category/chain/deployer trends, category summaries, and top-N queries.
+- **Prisma models** — `AnalyticsSnapshot`, `CategoryTrend`, `ChainTrend`, `DeployerTrend` in `packages/database/prisma/schema.prisma`.
+- **`apps/indexer/src/processor.ts`** — `BlockProcessor` calls `updateTrends()` after each token index to incrementally update all trend windows.
+- **`apps/api/src/routes/trends.ts`** — REST endpoints: `GET /api/trends` (overview + all trends), `GET /api/trends/category/:category`, `GET /api/trends/chain/:chain`, `GET /api/trends/deployer/:wallet`.
+- **`apps/dashboard/src/components/TrendsDashboard.tsx`** — React dashboard with SVG bar charts, pie charts, and tables showing trending tokens, deployers, chains, and category summaries.
+
+### Key Design Decisions
+
+- **UTC timestamps** — All aggregation windows use UTC methods (`setUTCMinutes`, `setUTCHours`, etc.) for consistent behavior across time zones.
+- **Weekly boundary** — Weeks start on Monday at 00:00 UTC.
+- **Incremental updates** — Each token index triggers a single `updateTrends()` call that upserts all three period snapshots, avoiding full recomputation.
+- **Growth calculation** — Category growth = `((current - previous) / previous) * 100`, returns 0 for no data, 100 for new categories with no prior data.
+- **Average aggregation** — Risk scores rounded to integer, metadata/AI confidence rounded to 1 decimal place; null values filtered out from averages.
+
+### Test Coverage
+
+- **`packages/analysis/src/__tests__/trend-engine.test.ts`** — 42 tests covering:
+  - `getPeriodTimestamp`: hourly/daily/weekly boundaries, midnight edge cases, month/year transitions, time reset verification.
+  - `computeTrendUpdate`: returns correct periods, chain, category, deployer; handles B20 tokens, null risk scores.
+  - `computeOverview`: empty datasets, single/multiple entries, average calculations, null filtering, rounding precision.
+  - `computeCategoryGrowth`: positive/negative/zero growth, fractional percentages, large numbers, edge cases with no prior data.
+
+---
+
 ## Tech Stack
 
 | Component     | Technology                                                  |

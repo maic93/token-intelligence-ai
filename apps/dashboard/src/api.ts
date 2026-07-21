@@ -13,6 +13,7 @@ import type {
   WalletListResponse,
   WalletDetailResponse,
   WalletSearchResponse,
+  TrendsResponse,
 } from './types';
 
 const API_BASE = '/api';
@@ -205,6 +206,10 @@ export function searchWallets(q: string, signal?: AbortSignal): Promise<WalletSe
     `${API_BASE}/wallets/search?q=${encodeURIComponent(q)}`,
     signal,
   );
+}
+
+export function fetchTrends(signal?: AbortSignal): Promise<TrendsResponse> {
+  return fetchJson<TrendsResponse>(`${API_BASE}/trends`, signal);
 }
 
 export function createWebSocketUrl(): string {

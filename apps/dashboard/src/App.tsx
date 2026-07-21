@@ -11,6 +11,7 @@ import { AnalyticsCards } from './components/AnalyticsCards';
 import { ChartsSection } from './components/ChartsSection';
 import { TokenGrid } from './components/TokenGrid';
 import { ChainsDashboard } from './components/ChainsDashboard';
+import { TrendsDashboard } from './components/TrendsDashboard';
 import { ConnectionBanner } from './components/ConnectionBanner';
 import { AnalyticsPage } from './components/AnalyticsPage';
 
@@ -252,6 +253,7 @@ export default function App() {
             {activeView === 'intelligence' && <AIIntelligenceDashboard />}
             {activeView === 'deployers' && <DeployersDashboard />}
             {activeView === 'wallets' && <WalletList />}
+            {activeView === 'trends' && <TrendsDashboard />}
             {activeView === 'chains' && <ChainsDashboard />}
             {activeView === 'settings' && (
               <div className="empty-state">
