@@ -47,3 +47,10 @@ export type {
   ChainTrendData,
   DeployerTrendData,
 } from './trend-engine.js';
+export { calculateSmartMoneyScore, calculateGrade } from './smart-money.js';
+export type {
+  SmartMoneyInput,
+  SmartMoneyResult,
+  SmartMoneyGrade,
+  SmartMoneyLabel,
+} from './smart-money.js';

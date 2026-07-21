@@ -161,6 +161,10 @@ model AnalyticsSnapshot {
   averageAIConfidence      Float?
   uniqueDeployers          Int      @default(0)
   totalDeployments         Int      @default(0)
+  averageSmartMoneyScore   Float?
+  eliteWallets             Int      @default(0)
+  professionalWallets      Int      @default(0)
+  dangerousWallets         Int      @default(0)
   createdAt                DateTime @default(now())
 
   @@unique([period, timestamp])
@@ -205,6 +209,34 @@ model ChainTrend {
   @@index([period])
   @@index([timestamp])
   @@map("chain_trends")
+}
+
+model SmartMoneyProfile {
+  id                    String   @id @default(uuid())
+  wallet                String   @unique
+  score                 Int      @default(0)
+  grade                 String   @default("Dangerous")
+  firstSeen             DateTime?
+  lastSeen              DateTime?
+  tokensCreated         Int      @default(0)
+  averageRisk           Float?
+  averageMetadataConfidence Float @default(0)
+  averageAIConfidence   Float    @default(0)
+  successfulTokens      Int      @default(0)
+  failedTokens          Int      @default(0)
+  averageHoldTimeDays   Float?
+  winRate               Float    @default(0)
+  labels                Json     @default("[]")
+  summary               String   @default("")
+  updatedAt             DateTime @updatedAt
+  signals               Json     @default("[]")
+
+  @@index([score])
+  @@index([grade])
+  @@index([winRate])
+  @@index([tokensCreated])
+  @@index([lastSeen])
+  @@map("smart_money_profiles")
 }
 
 model DeployerTrend {

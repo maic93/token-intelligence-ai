@@ -524,3 +524,22 @@ export interface TrendData {
 export interface TrendsResponse {
   data: TrendData;
 }
+
+export interface SmartMoneyProfileData {
+  wallet: string;
+  score: number;
+  grade: string;
+  firstSeen: string | null;
+  lastSeen: string | null;
+  tokensCreated: number;
+  averageRisk: number | null;
+  averageMetadataConfidence: number;
+  averageAIConfidence: number;
+  successfulTokens: number;
+  failedTokens: number;
+  averageHoldTimeDays: number | null;
+  winRate: number;
+  labels: string[];
+  summary: string;
+  signals: string[];
+}

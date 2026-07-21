@@ -11,6 +11,7 @@ import {
   Brain,
   Wallet,
   TrendingUp,
+  Star,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -28,6 +29,7 @@ const navItems = [
   { id: 'wallets', label: 'Wallet Intelligence', icon: Wallet },
   { id: 'deployers', label: 'Deployers', icon: Users },
   { id: 'analytics', label: 'Analytics', icon: BarChart3 },
+  { id: 'smartmoney', label: 'Smart Money', icon: Star },
   { id: 'trends', label: 'Trends', icon: TrendingUp },
   { id: 'chains', label: 'Chains', icon: Link2 },
   { id: 'settings', label: 'Settings', icon: Settings },

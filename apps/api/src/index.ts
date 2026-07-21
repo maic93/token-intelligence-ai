@@ -26,6 +26,8 @@ import { b20Router } from './routes/b20.js';
 import { intelligenceRouter } from './routes/intelligence.js';
 import { walletsRouter } from './routes/wallets.js';
 import { trendsRouter } from './routes/trends.js';
+import { smartMoneyRouter } from './routes/smart-money.js';
+import { signalsRouter } from './routes/signals.js';
 import { errorHandler } from './middleware/error-handler.js';
 import { requestLogger } from './middleware/request-logger.js';
 import { requestIdMiddleware } from './middleware/request-id.js';
@@ -82,6 +84,8 @@ app.use('/api/b20', b20Router);
 app.use('/api/intelligence', intelligenceRouter);
 app.use('/api/wallets', walletsRouter);
 app.use('/api/trends', trendsRouter);
+app.use('/api/smart-money', smartMoneyRouter);
+app.use('/api/signals', signalsRouter);
 
 if (config.NODE_ENV === 'production') {
   const dashboardPath = path.resolve(import.meta.dirname, '../../dashboard/dist');
