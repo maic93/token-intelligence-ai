@@ -26,6 +26,11 @@ const baseToken: Token = {
   blockNumber: 1000n,
   blockTimestamp: new Date(),
   transactionHash: '0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890',
+  fundedBy: null,
+  fundingAmount: null,
+  fundingTimestamp: null,
+  fundingSourceType: 'Unknown',
+  timeToDeploymentMinutes: null,
 };
 
 function makeRpc(overrides?: Partial<RpcProvider>): RpcProvider {

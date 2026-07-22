@@ -32,6 +32,11 @@ model Token {
   transactionHash String
   analysis        TokenAnalysis?
   watchEvents     WatchEvent[]
+  fundedBy                String?
+  fundingAmount           String?
+  fundingTimestamp        DateTime?
+  fundingSourceType       String   @default("Unknown")
+  timeToDeploymentMinutes Float?
 
   @@unique([chain, contractAddress])
   @@index([chain])
@@ -165,6 +170,11 @@ model AnalyticsSnapshot {
   eliteWallets             Int      @default(0)
   professionalWallets      Int      @default(0)
   dangerousWallets         Int      @default(0)
+  averageFundingAmount     Float?
+  cexFundedDeployers       Int      @default(0)
+  bridgeFundedDeployers    Int      @default(0)
+  largestFunding           Float?
+  largestCluster           Int      @default(0)
   createdAt                DateTime @default(now())
 
   @@unique([period, timestamp])
@@ -209,6 +219,46 @@ model ChainTrend {
   @@index([period])
   @@index([timestamp])
   @@map("chain_trends")
+}
+
+model FundingProfile {
+  wallet                  String   @id
+  fundedBy                String?
+  fundingTxHash           String?
+  fundingBlock            BigInt?
+  fundingTimestamp        DateTime?
+  fundingAmount           String?
+  fundingCurrency         String   @default("ETH")
+  timeToDeploymentMinutes Float?
+  fundingSourceType       String   @default("Unknown")
+  clusterId               String?
+  firstSeen               DateTime?
+  updatedAt               DateTime @updatedAt
+
+  @@index([fundedBy])
+  @@index([fundingSourceType])
+  @@index([clusterId])
+  @@index([fundingTimestamp])
+  @@map("funding_profiles")
+}
+
+model FundingCluster {
+  id              String   @id @default(uuid())
+  funderWallet    String
+  walletCount     Int      @default(0)
+  deployments     Int      @default(0)
+  successfulTokens Int     @default(0)
+  highRiskTokens  Int      @default(0)
+  chains          Json     @default("[]")
+  totalFunding    String   @default("0")
+  firstSeen       DateTime?
+  lastSeen        DateTime?
+  updatedAt       DateTime @updatedAt
+
+  @@index([funderWallet])
+  @@index([walletCount])
+  @@index([deployments])
+  @@map("funding_clusters")
 }
 
 model SmartMoneyProfile {

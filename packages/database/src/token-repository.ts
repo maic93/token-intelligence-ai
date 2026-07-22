@@ -19,6 +19,11 @@ export interface CreateTokenInput {
   b20Confidence: number;
   deployerReputation?: number;
   deployerGrade?: string;
+  fundedBy?: string | null;
+  fundingAmount?: string | null;
+  fundingTimestamp?: Date | null;
+  fundingSourceType?: string;
+  timeToDeploymentMinutes?: number | null;
 }
 
 export interface ListTokensOptions {
@@ -91,6 +96,11 @@ export class TokenRepository {
         blockNumber: input.blockNumber,
         blockTimestamp: input.blockTimestamp,
         transactionHash: input.transactionHash,
+        fundedBy: input.fundedBy ?? null,
+        fundingAmount: input.fundingAmount ?? null,
+        fundingTimestamp: input.fundingTimestamp ?? null,
+        fundingSourceType: input.fundingSourceType ?? 'Unknown',
+        timeToDeploymentMinutes: input.timeToDeploymentMinutes ?? null,
       },
     });
   }

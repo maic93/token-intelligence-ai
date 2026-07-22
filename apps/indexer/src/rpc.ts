@@ -227,6 +227,47 @@ export class RpcClient {
   async getBalance(address: string): Promise<string> {
     return this.call<string>('eth_getBalance', [address, 'latest']);
   }
+
+  async traceBlock(blockNumber: bigint): Promise<RpcTraceCall[]> {
+    const hex = '0x' + blockNumber.toString(16);
+    try {
+      return await this.call<RpcTraceCall[]>('trace_block', [hex], { retry: false });
+    } catch {
+      return [];
+    }
+  }
+
+  async getInboundTransfers(
+    address: string,
+    fromBlock: bigint,
+    toBlock: bigint,
+  ): Promise<RpcTraceCall[]> {
+    try {
+      return await this.call<RpcTraceCall[]>(
+        'trace_filter',
+        [
+          {
+            fromBlock: '0x' + fromBlock.toString(16),
+            toBlock: '0x' + toBlock.toString(16),
+            toAddress: [address],
+          },
+        ],
+        { retry: false },
+      );
+    } catch {
+      return [];
+    }
+  }
+}
+
+export interface RpcTraceCall {
+  from: string;
+  to: string;
+  value: string;
+  input: string;
+  hash: string;
+  blockNumber: bigint;
+  timestamp: Date;
 }
 
 function sleep(ms: number): Promise<void> {

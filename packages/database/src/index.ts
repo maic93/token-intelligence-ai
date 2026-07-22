@@ -25,6 +25,13 @@ export type { WatchEvent } from '@prisma/client';
 export type { WatchEventRecord } from './watch-repository.js';
 export { TrendRepository } from './trend-repository.js';
 export { SmartMoneyRepository } from './smart-money-repository.js';
+export { FundingRepository } from './funding-repository.js';
+export type {
+  FundingProfileData,
+  FundingClusterData,
+  FundingListResult,
+  ListFundingOptions,
+} from './funding-repository.js';
 export type {
   SmartMoneyProfileData,
   SmartMoneyListResult,

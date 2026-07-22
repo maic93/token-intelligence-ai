@@ -35,3 +35,10 @@ export {
   getChainExplorer,
   getChainCurrency,
 } from './chain-utils.js';
+export {
+  KNOWN_FUNDING_SOURCES,
+  classifyFundingSource,
+  isExchangeAddress,
+  isBridgeAddress,
+} from './funding-sources.js';
+export type { FundingSourceEntry } from './funding-sources.js';

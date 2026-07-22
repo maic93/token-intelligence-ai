@@ -13,6 +13,7 @@ import { TokenGrid } from './components/TokenGrid';
 import { ChainsDashboard } from './components/ChainsDashboard';
 import { TrendsDashboard } from './components/TrendsDashboard';
 import { SmartMoneyDashboard } from './components/SmartMoneyDashboard';
+import { FundingDashboard } from './components/FundingDashboard';
 import { ConnectionBanner } from './components/ConnectionBanner';
 import { AnalyticsPage } from './components/AnalyticsPage';
 
@@ -254,6 +255,7 @@ export default function App() {
             {activeView === 'intelligence' && <AIIntelligenceDashboard />}
             {activeView === 'deployers' && <DeployersDashboard />}
             {activeView === 'wallets' && <WalletList />}
+            {activeView === 'funding' && <FundingDashboard />}
             {activeView === 'smartmoney' && <SmartMoneyDashboard />}
             {activeView === 'trends' && <TrendsDashboard />}
             {activeView === 'chains' && <ChainsDashboard />}
