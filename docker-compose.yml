@@ -33,11 +33,15 @@ services:
       LOG_LEVEL: info
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/token_intelligence
       BASE_RPC_URL: https://mainnet.base.org
+      ROBINHOOD_RPC_URL: https://mainnet-rpc.robinhood.org
+      ROBINHOOD_WS_URL: wss://mainnet-rpc.robinhood.org/ws
       ETHEREUM_RPC_URL: https://eth.merkle.io
       POLYGON_RPC_URL: https://polygon-rpc.com
       START_BLOCK: '0'
       BACKFILL_BLOCKS: '0'
       POLL_INTERVAL_MS: '12000'
+      ENABLE_ETHEREUM: 'false'
+      ENABLE_POLYGON: 'false'
     depends_on:
       postgres:
         condition: service_healthy
@@ -59,6 +63,8 @@ services:
       RATE_LIMIT_WINDOW_MS: '60000'
       RATE_LIMIT_MAX: '100'
       BASE_RPC_URL: https://mainnet.base.org
+      ROBINHOOD_RPC_URL: https://mainnet-rpc.robinhood.org
+      ROBINHOOD_WS_URL: wss://mainnet-rpc.robinhood.org/ws
       ETHEREUM_RPC_URL: https://eth.merkle.io
       POLYGON_RPC_URL: https://polygon-rpc.com
     depends_on:

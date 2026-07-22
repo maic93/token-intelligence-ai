@@ -24,7 +24,15 @@ export type {
   AlertMessage,
   WatchEventsResponse,
 } from './watchlist.js';
-export { CANONICAL_CHAINS, CHAIN_NAMES, ENABLE_MAP, getCanonicalChain } from './chains.js';
+export {
+  CANONICAL_CHAINS,
+  CHAIN_NAMES,
+  ENABLE_MAP,
+  getCanonicalChain,
+  getDefaultWsUrl,
+  getChainLogo,
+  getChainColor,
+} from './chains.js';
 export type { ChainName, ChainDefinition } from './chains.js';
 export {
   getExplorerTx,

@@ -13,6 +13,9 @@ import { TokenGrid } from './components/TokenGrid';
 import { ChainsDashboard } from './components/ChainsDashboard';
 import { TrendsDashboard } from './components/TrendsDashboard';
 import { SmartMoneyDashboard } from './components/SmartMoneyDashboard';
+import { ChainHealthWidget } from './components/ChainHealthWidget';
+import { CrossChainDashboard } from './components/CrossChainDashboard';
+import { LeaderboardDashboard } from './components/LeaderboardDashboard';
 import { FundingDashboard } from './components/FundingDashboard';
 import { SignalsDashboard } from './components/SignalsDashboard';
 import { ConnectionBanner } from './components/ConnectionBanner';
@@ -43,6 +46,7 @@ export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeView, setActiveView] = useState('dashboard');
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedChain, setSelectedChain] = useState('');
   const newTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
   const {
@@ -155,6 +159,8 @@ export default function App() {
             onMenuToggle={() => setSidebarOpen((p) => !p)}
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
+            selectedChain={selectedChain}
+            onChainChange={setSelectedChain}
           />
           <main className="main-content">
             <AnalyticsPage
@@ -185,6 +191,8 @@ export default function App() {
           onMenuToggle={() => setSidebarOpen((p) => !p)}
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
+          selectedChain={selectedChain}
+          onChainChange={setSelectedChain}
           unreadCount={unreadCount}
           onBellClick={() => markAllSeen()}
         />
@@ -261,6 +269,9 @@ export default function App() {
             {activeView === 'smartmoney' && <SmartMoneyDashboard />}
             {activeView === 'trends' && <TrendsDashboard />}
             {activeView === 'chains' && <ChainsDashboard />}
+            {activeView === 'chain-health' && <ChainHealthWidget />}
+            {activeView === 'leaderboards' && <LeaderboardDashboard />}
+            {activeView === 'cross-chain' && <CrossChainDashboard />}
             {activeView === 'settings' && (
               <div className="empty-state">
                 <div className="empty-state-icon">
