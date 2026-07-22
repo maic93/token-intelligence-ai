@@ -698,7 +698,7 @@ export class BlockProcessor {
         for (const p of clusterProfiles) {
           activeWallets.set(p.wallet, { wallet: p.wallet, fundedBy: p.fundedBy });
         }
-        const graph = buildFundingGraph(Array.from(activeWallets.values()));
+        const graph = await buildFundingGraph(Array.from(activeWallets.values()));
         await this.fundingRepo.upsertCluster(fundingResult.fundedBy, {
           walletCount: graph.nodes.length,
           deployments: graph.edges.length,
@@ -779,6 +779,12 @@ export class BlockProcessor {
         walletSuccessfulTokens: walletProfile?.successfulTokens ?? 0,
         walletHighRiskTokens: walletProfile?.highRiskTokens ?? 0,
         walletAgeDays: walletProfile?.walletAgeDays ?? null,
+        graphClusterSize: null,
+        graphClusterScore: null,
+        graphRecursiveFundingDepth: null,
+        graphSharedDeployers: 0,
+        graphHasCircularFunding: false,
+        graphTeamWalletOverlap: 0,
       };
 
       const result = engine.generateTokenSignal(signalInput);

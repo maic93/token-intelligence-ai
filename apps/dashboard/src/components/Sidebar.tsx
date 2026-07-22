@@ -17,6 +17,7 @@ import {
   Trophy,
   Globe,
   Activity,
+  Share2,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -42,6 +43,7 @@ const navItems = [
   { id: 'chain-health', label: 'Chain Health', icon: Activity },
   { id: 'leaderboards', label: 'Leaderboards', icon: Trophy },
   { id: 'cross-chain', label: 'Cross-Chain', icon: Globe },
+  { id: 'wallet-graph', label: 'Wallet Graph', icon: Share2 },
   { id: 'settings', label: 'Settings', icon: Settings },
 ];
 

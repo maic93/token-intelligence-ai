@@ -30,6 +30,7 @@ import { smartMoneyRouter } from './routes/smart-money.js';
 import { fundingRouter } from './routes/funding.js';
 import { signalsRouter } from './routes/signals.js';
 import { signalsV2Router } from './routes/signals-v2.js';
+import { graphRouter } from './routes/graph.js';
 import { chainHealthRouter } from './routes/chain-health.js';
 import { leaderboardsRouter } from './routes/leaderboards.js';
 import { crossChainAnalyticsRouter } from './routes/cross-chain-analytics.js';
@@ -95,6 +96,7 @@ app.use('/api/signals', signalsRouter);
 app.use('/api/signals-v2', signalsV2Router);
 app.use('/api/chains/status', chainHealthRouter);
 app.use('/api/leaderboards', leaderboardsRouter);
+app.use('/api/graph', graphRouter);
 app.use('/api/cross-chain-analytics', crossChainAnalyticsRouter);
 
 if (config.NODE_ENV === 'production') {

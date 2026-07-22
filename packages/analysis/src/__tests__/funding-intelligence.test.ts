@@ -173,35 +173,35 @@ describe('parseFundingAmount', () => {
 });
 
 describe('buildFundingGraph', () => {
-  it('returns empty graph for empty profiles', () => {
-    const graph = buildFundingGraph([]);
+  it('returns empty graph for empty profiles', async () => {
+    const graph = await buildFundingGraph([]);
     expect(graph.nodes).toHaveLength(0);
     expect(graph.edges).toHaveLength(0);
   });
 
-  it('builds nodes and edges for connected profiles', () => {
+  it('builds nodes and edges for connected profiles', async () => {
     const profiles = [
       { wallet: '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', fundedBy: '0xfunder' },
       { wallet: '0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb', fundedBy: '0xfunder' },
     ];
-    const graph = buildFundingGraph(profiles);
+    const graph = await buildFundingGraph(profiles);
     expect(graph.nodes).toHaveLength(3);
     expect(graph.edges).toHaveLength(2);
   });
 
-  it('includes unfunded wallets as nodes with no edge', () => {
+  it('includes unfunded wallets as nodes with no edge', async () => {
     const profiles = [{ wallet: '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', fundedBy: null }];
-    const graph = buildFundingGraph(profiles);
+    const graph = await buildFundingGraph(profiles);
     expect(graph.nodes).toHaveLength(1);
     expect(graph.edges).toHaveLength(0);
   });
 
-  it('deduplicates nodes with same wallet and funder', () => {
+  it('deduplicates nodes with same wallet and funder', async () => {
     const profiles = [
       { wallet: '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', fundedBy: '0xfunder' },
       { wallet: '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', fundedBy: '0xfunder' },
     ];
-    const graph = buildFundingGraph(profiles);
+    const graph = await buildFundingGraph(profiles);
     expect(graph.nodes).toHaveLength(2);
     expect(graph.edges).toHaveLength(2);
   });

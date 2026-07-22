@@ -317,6 +317,48 @@ model SmartMoneyProfile {
   @@map("smart_money_profiles")
 }
 
+model WalletEdge {
+  id              String   @id @default(uuid())
+  fromWallet      String
+  toWallet        String
+  chain           String
+  tokenAddress    String?
+  currency        String   @default("ETH")
+  amount          String
+  amountUsd       Float?
+  blockNumber     BigInt
+  timestamp       DateTime
+  transactionHash String
+  edgeType        String
+  confidence      Int      @default(50)
+  createdAt       DateTime @default(now())
+
+  @@index([fromWallet])
+  @@index([toWallet])
+  @@index([chain])
+  @@index([timestamp])
+  @@index([edgeType])
+  @@index([fromWallet, toWallet])
+  @@index([fromWallet, chain])
+  @@index([toWallet, chain])
+  @@map("wallet_edges")
+}
+
+model WalletCluster {
+  id        String   @id @default(uuid())
+  clusterId String
+  wallet    String
+  role      String   @default("member")
+  score     Int      @default(0)
+  depth     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([clusterId])
+  @@index([wallet])
+  @@index([clusterId, wallet])
+  @@map("wallet_clusters")
+}
+
 model DeployerTrend {
   id                    String   @id @default(uuid())
   wallet                String

@@ -1,4 +1,5 @@
 import { classifyFundingSource } from '@token-intelligence-ai/shared';
+import type { WalletGraphRepository, WalletEdgeType } from '@token-intelligence-ai/database';
 
 export interface FundingAnalysisInput {
   deployer: string;
@@ -134,10 +135,19 @@ export function parseFundingAmount(wei: string | null): number | null {
   }
 }
 
-export function buildFundingGraph(
-  profiles: { wallet: string; fundedBy: string | null }[],
+export async function buildFundingGraph(
+  profiles: {
+    wallet: string;
+    fundedBy: string | null;
+    chain?: string;
+    amount?: string;
+    timestamp?: Date;
+    txHash?: string;
+    blockNumber?: bigint;
+  }[],
+  repo?: WalletGraphRepository,
   _maxDepth: number = 5,
-): { nodes: { id: string; label: string }[]; edges: { from: string; to: string }[] } {
+): Promise<{ nodes: { id: string; label: string }[]; edges: { from: string; to: string }[] }> {
   const nodes = new Map<string, { id: string; label: string }>();
   const edges: { from: string; to: string }[] = [];
 
@@ -152,6 +162,21 @@ export function buildFundingGraph(
     if (p.fundedBy) {
       addNode(p.fundedBy);
       edges.push({ from: p.fundedBy, to: p.wallet });
+      if (repo && p.txHash && p.amount && p.timestamp && p.blockNumber) {
+        await repo
+          .saveEdge({
+            fromWallet: p.fundedBy,
+            toWallet: p.wallet,
+            chain: p.chain ?? 'ethereum',
+            amount: p.amount,
+            blockNumber: p.blockNumber,
+            timestamp: p.timestamp,
+            transactionHash: p.txHash,
+            edgeType: 'Funding' as WalletEdgeType,
+            confidence: 80,
+          })
+          .catch(() => {});
+      }
     }
   }
 

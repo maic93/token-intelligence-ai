@@ -16,6 +16,7 @@ import { SmartMoneyDashboard } from './components/SmartMoneyDashboard';
 import { ChainHealthWidget } from './components/ChainHealthWidget';
 import { CrossChainDashboard } from './components/CrossChainDashboard';
 import { LeaderboardDashboard } from './components/LeaderboardDashboard';
+import { WalletGraphDashboard } from './components/WalletGraphDashboard';
 import { FundingDashboard } from './components/FundingDashboard';
 import { SignalsDashboard } from './components/SignalsDashboard';
 import { ConnectionBanner } from './components/ConnectionBanner';
@@ -272,6 +273,7 @@ export default function App() {
             {activeView === 'chain-health' && <ChainHealthWidget />}
             {activeView === 'leaderboards' && <LeaderboardDashboard />}
             {activeView === 'cross-chain' && <CrossChainDashboard />}
+            {activeView === 'wallet-graph' && <WalletGraphDashboard />}
             {activeView === 'settings' && (
               <div className="empty-state">
                 <div className="empty-state-icon">
