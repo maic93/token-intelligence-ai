@@ -476,6 +476,7 @@ Set the RPC URL for each chain to enable it. Chains without a URL are automatica
 | `ETHEREUM_RPC_URL`  | Ethereum Mainnet |
 | `POLYGON_RPC_URL`   | Polygon          |
 | `ROBINHOOD_RPC_URL` | Robinhood Chain  |
+| `ROBINHOOD_WS_URL`  | Robinhood WS     |
 
 ### Analytics
 
@@ -609,6 +610,27 @@ Platform statistics.
 }
 ```
 
+### `GET /api/chains/:chain`
+
+Single chain detail with health and metrics.
+
+**Response:**
+
+```json
+{
+  "data": {
+    "name": "robinhood",
+    "chainId": 4663,
+    "displayName": "Robinhood Chain",
+    "explorerUrl": "https://robinhoodchain.blockscout.com",
+    "enabled": true,
+    "tokenCount": 42,
+    "lastSyncedBlock": "12345678",
+    "nativeCurrency": { "name": "Ether", "symbol": "ETH", "decimals": 18 }
+  }
+}
+```
+
 ### `GET /api/chains`
 
 Chain configuration and indexing status.
@@ -633,6 +655,61 @@ Chain configuration and indexing status.
   }
 }
 ```
+
+### `GET /api/chains/status`
+
+Per-chain health monitoring.
+
+**Response:**
+
+```json
+{
+  "data": {
+    "chains": [
+      {
+        "name": "base",
+        "chainId": 8453,
+        "displayName": "Base",
+        "enabled": true,
+        "connected": true,
+        "logo": "🔷",
+        "color": "#0052FF",
+        "currentBlock": null,
+        "lastIndexedBlock": "24567890",
+        "blocksBehind": 0,
+        "tokenCount": 712,
+        "workerStatus": "running"
+      }
+    ]
+  }
+}
+```
+
+### `GET /api/leaderboards/:category`
+
+Cross-chain leaderboards. Categories: `deployers`, `smart-money`, `opportunity`, `lowest-risk`, `funding`, `chains`.
+
+**Response:**
+
+```json
+{
+  "data": [
+    {
+      "rank": 1,
+      "identifier": "0x...",
+      "displayName": "0xabc...",
+      "value": 50,
+      "extra": { "reputationScore": 85 }
+    }
+  ]
+}
+```
+
+### `GET /api/cross-chain-analytics`
+
+Unified cross-chain analytics with per-chain breakdowns, averages, and daily trends.
+
+**Response:** Summary with total tokens, tokens today/this week, most active chain, per-chain metrics, smart money overview, funding overview, and 14-day daily trend.
 
 ### `GET /api/analysis/:address`
 
@@ -1315,7 +1392,7 @@ The `ChainHealthMonitor` continuously evaluates:
 | Behind  | More than 100 blocks behind the tip                  |
 | Offline | RPC unreachable or failure rate exceeds success rate |
 
-Health is exposed via `GET /api/chains/analytics` and broadcast via WebSocket on status changes.
+Health is exposed via `GET /api/chains/status` (detailed per-chain health with block lag, connection status, worker state) and `GET /api/chains/analytics`. Broadcast via WebSocket on status changes.
 
 ### Explorer Abstraction
 
@@ -1333,8 +1410,12 @@ Works automatically for Base, Robinhood, Ethereum, and Polygon.
 ### Dashboard
 
 - **Chains page**: Cards for each chain showing current block, RPC latency, status, token/deployer counts, last sync, explorer link, and health badge
+- **Chain Health page**: Dedicated widget with real-time status per chain, block lag alerts, worker state, and live metrics (auto-refreshes every 60s)
+- **Chain Selector**: Reusable dropdown component integrated into token lists, dashboards, and filters — filter any view to a single chain
 - **Live updates**: Dashboard auto-refreshes every 30 seconds and receives WebSocket push on chain status changes
 - **Health badges**: Color-coded (green=Healthy, yellow=Slow, orange=Behind, red=Offline)
+- **Cross-Chain Analytics page**: Unified platform metrics across all chains with per-chain breakdowns, smart money/funding overview, 14-day trend
+- **Leaderboards page**: Six-section grid showing Top Deployers, Smart Money, Highest Opportunity, Lowest Risk, Largest Funding, and Most Active Chains
 
 ### Adding a New Chain
 

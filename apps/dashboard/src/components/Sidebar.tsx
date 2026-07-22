@@ -14,6 +14,9 @@ import {
   Star,
   DollarSign,
   Zap,
+  Trophy,
+  Globe,
+  Activity,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -36,6 +39,9 @@ const navItems = [
   { id: 'smartmoney', label: 'Smart Money', icon: Star },
   { id: 'trends', label: 'Trends', icon: TrendingUp },
   { id: 'chains', label: 'Chains', icon: Link2 },
+  { id: 'chain-health', label: 'Chain Health', icon: Activity },
+  { id: 'leaderboards', label: 'Leaderboards', icon: Trophy },
+  { id: 'cross-chain', label: 'Cross-Chain', icon: Globe },
   { id: 'settings', label: 'Settings', icon: Settings },
 ];
 

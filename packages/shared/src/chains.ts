@@ -7,13 +7,19 @@ export interface ChainDefinition {
   chainId: number;
   displayName: string;
   rpcUrl: string;
+  wsUrl: string;
   explorerUrl: string;
   enabled: boolean;
   nativeCurrency: { name: string; symbol: string; decimals: number };
   supportsContracts: boolean;
+  logo: string;
+  color: string;
 }
 
-export const CANONICAL_CHAINS: Record<ChainName, Omit<ChainDefinition, 'rpcUrl' | 'enabled'>> = {
+export const CANONICAL_CHAINS: Record<
+  ChainName,
+  Omit<ChainDefinition, 'rpcUrl' | 'enabled' | 'wsUrl'>
+> = {
   base: {
     name: 'base',
     chainId: 8453,
@@ -21,6 +27,8 @@ export const CANONICAL_CHAINS: Record<ChainName, Omit<ChainDefinition, 'rpcUrl' 
     explorerUrl: 'https://basescan.org',
     nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
     supportsContracts: true,
+    logo: '🔷',
+    color: '#0052FF',
   },
   ethereum: {
     name: 'ethereum',
@@ -29,6 +37,8 @@ export const CANONICAL_CHAINS: Record<ChainName, Omit<ChainDefinition, 'rpcUrl' 
     explorerUrl: 'https://etherscan.io',
     nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
     supportsContracts: true,
+    logo: '⬡',
+    color: '#627EEA',
   },
   polygon: {
     name: 'polygon',
@@ -37,6 +47,8 @@ export const CANONICAL_CHAINS: Record<ChainName, Omit<ChainDefinition, 'rpcUrl' 
     explorerUrl: 'https://polygonscan.com',
     nativeCurrency: { name: 'POL', symbol: 'POL', decimals: 18 },
     supportsContracts: true,
+    logo: '⬠',
+    color: '#8247E5',
   },
   robinhood: {
     name: 'robinhood',
@@ -45,6 +57,8 @@ export const CANONICAL_CHAINS: Record<ChainName, Omit<ChainDefinition, 'rpcUrl' 
     explorerUrl: 'https://robinhoodchain.blockscout.com',
     nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
     supportsContracts: true,
+    logo: '🟢',
+    color: '#00C805',
   },
 };
 
@@ -55,8 +69,23 @@ export const ENABLE_MAP: Record<ChainName, boolean> = {
   polygon: false,
 };
 
-export function getCanonicalChain(name: ChainName): Omit<ChainDefinition, 'rpcUrl' | 'enabled'> {
+export function getCanonicalChain(
+  name: ChainName,
+): Omit<ChainDefinition, 'rpcUrl' | 'enabled' | 'wsUrl'> {
   const chain = CANONICAL_CHAINS[name];
   if (!chain) throw new Error(`Unknown chain: ${name}`);
   return chain;
+}
+
+export function getDefaultWsUrl(name: ChainName): string {
+  const rpcEnv = `${name.toUpperCase()}_WS_URL`;
+  return process.env[rpcEnv] || '';
+}
+
+export function getChainLogo(name: ChainName): string {
+  return CANONICAL_CHAINS[name]?.logo ?? '⛓️';
+}
+
+export function getChainColor(name: ChainName): string {
+  return CANONICAL_CHAINS[name]?.color ?? '#888888';
 }

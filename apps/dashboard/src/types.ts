@@ -525,6 +525,38 @@ export interface TrendsResponse {
   data: TrendData;
 }
 
+export interface ChainHealthEntry {
+  name: string;
+  chainId: number;
+  displayName: string;
+  enabled: boolean;
+  connected: boolean;
+  logo: string;
+  color: string;
+  currentBlock: string | null;
+  lastIndexedBlock: string | null;
+  blocksBehind: number | null;
+  tokenCount: number;
+  workerStatus: string;
+  errors: string[];
+}
+
+export interface ChainHealthResponse {
+  data: { chains: ChainHealthEntry[]; updatedAt: string };
+}
+
+export interface LeaderboardEntry {
+  rank: number;
+  identifier: string;
+  displayName?: string;
+  value: number;
+  extra?: Record<string, unknown>;
+}
+
+export interface LeaderboardResponse {
+  data: LeaderboardEntry[];
+}
+
 export interface SmartMoneyProfileData {
   wallet: string;
   score: number;

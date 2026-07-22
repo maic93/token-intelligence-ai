@@ -30,6 +30,9 @@ import { smartMoneyRouter } from './routes/smart-money.js';
 import { fundingRouter } from './routes/funding.js';
 import { signalsRouter } from './routes/signals.js';
 import { signalsV2Router } from './routes/signals-v2.js';
+import { chainHealthRouter } from './routes/chain-health.js';
+import { leaderboardsRouter } from './routes/leaderboards.js';
+import { crossChainAnalyticsRouter } from './routes/cross-chain-analytics.js';
 import { errorHandler } from './middleware/error-handler.js';
 import { requestLogger } from './middleware/request-logger.js';
 import { requestIdMiddleware } from './middleware/request-id.js';
@@ -90,6 +93,9 @@ app.use('/api/smart-money', smartMoneyRouter);
 app.use('/api/funding', fundingRouter);
 app.use('/api/signals', signalsRouter);
 app.use('/api/signals-v2', signalsV2Router);
+app.use('/api/chains/status', chainHealthRouter);
+app.use('/api/leaderboards', leaderboardsRouter);
+app.use('/api/cross-chain-analytics', crossChainAnalyticsRouter);
 
 if (config.NODE_ENV === 'production') {
   const dashboardPath = path.resolve(import.meta.dirname, '../../dashboard/dist');

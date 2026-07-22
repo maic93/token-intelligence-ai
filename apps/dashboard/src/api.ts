@@ -14,6 +14,8 @@ import type {
   WalletDetailResponse,
   WalletSearchResponse,
   TrendsResponse,
+  ChainHealthResponse,
+  LeaderboardResponse,
 } from './types';
 
 const API_BASE = '/api';
@@ -210,6 +212,24 @@ export function searchWallets(q: string, signal?: AbortSignal): Promise<WalletSe
 
 export function fetchTrends(signal?: AbortSignal): Promise<TrendsResponse> {
   return fetchJson<TrendsResponse>(`${API_BASE}/trends`, signal);
+}
+
+export function fetchChainHealth(signal?: AbortSignal): Promise<ChainHealthResponse> {
+  return fetchJson<ChainHealthResponse>(`${API_BASE}/chains/status`, signal);
+}
+
+export function fetchLeaderboard(
+  category: string,
+  signal?: AbortSignal,
+): Promise<LeaderboardResponse> {
+  return fetchJson<LeaderboardResponse>(
+    `${API_BASE}/leaderboards/${encodeURIComponent(category)}`,
+    signal,
+  );
+}
+
+export function fetchCrossChainAnalytics(signal?: AbortSignal): Promise<{ data: unknown }> {
+  return fetchJson(`${API_BASE}/cross-chain-analytics`, signal);
 }
 
 export function createWebSocketUrl(): string {

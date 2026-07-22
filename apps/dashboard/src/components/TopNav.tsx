@@ -1,6 +1,6 @@
-import { useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Menu, Search, X, ExternalLink, Sun, Bell } from 'lucide-react';
+import { Menu, Search, X, ExternalLink, Sun, Bell, Globe } from 'lucide-react';
 
 interface TopNavProps {
   connected: boolean;
@@ -9,6 +9,8 @@ interface TopNavProps {
   onSearchChange: (q: string) => void;
   unreadCount?: number;
   onBellClick?: () => void;
+  selectedChain?: string;
+  onChainChange?: (chain: string) => void;
 }
 
 export function TopNav({
@@ -18,8 +20,20 @@ export function TopNav({
   onSearchChange,
   unreadCount = 0,
   onBellClick,
+  selectedChain = '',
+  onChainChange,
 }: TopNavProps) {
   const handleClear = useCallback(() => onSearchChange(''), [onSearchChange]);
+  const [chains, setChains] = useState<{ name: string; displayName: string }[]>([]);
+
+  useEffect(() => {
+    fetch('/api/chains')
+      .then((r) => r.json())
+      .then((res) =>
+        setChains((res.data?.chains ?? []).filter((c: { enabled: boolean }) => c.enabled)),
+      )
+      .catch(() => {});
+  }, []);
 
   return (
     <header className="top-nav">
@@ -34,6 +48,17 @@ export function TopNav({
       </div>
 
       <div className="top-nav-center">
+        <div className="chain-selector-nav">
+          <Globe size={14} />
+          <select value={selectedChain} onChange={(e) => onChainChange?.(e.target.value)}>
+            <option value="">All Chains</option>
+            {chains.map((c) => (
+              <option key={c.name} value={c.name}>
+                {c.displayName}
+              </option>
+            ))}
+          </select>
+        </div>
         <div className="search-wrapper">
           <Search className="search-icon" size={15} />
           <input
