@@ -26,6 +26,7 @@ export type { WatchEventRecord } from './watch-repository.js';
 export { TrendRepository } from './trend-repository.js';
 export { SmartMoneyRepository } from './smart-money-repository.js';
 export { FundingRepository } from './funding-repository.js';
+export { SignalRepository } from './signal-repository.js';
 export type {
   FundingProfileData,
   FundingClusterData,

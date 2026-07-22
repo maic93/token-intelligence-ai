@@ -7,6 +7,7 @@ import {
   TrendRepository,
   SmartMoneyRepository,
   FundingRepository,
+  SignalRepository,
 } from '@token-intelligence-ai/database';
 import type { ChainConfig } from '@token-intelligence-ai/blockchain';
 import { RpcClient } from './rpc.js';
@@ -62,6 +63,7 @@ export class ChainWorkerManager {
       const trendRepo = new TrendRepository(prisma);
       const smartMoneyRepo = new SmartMoneyRepository(prisma);
       const fundingRepo = new FundingRepository(prisma);
+      const signalRepo = new SignalRepository(prisma);
       const rpc = new RpcClient(chain.rpcUrl, workerLog);
       const processor = new BlockProcessor(
         chain,
@@ -72,6 +74,7 @@ export class ChainWorkerManager {
         trendRepo,
         smartMoneyRepo,
         fundingRepo,
+        signalRepo,
         workerLog,
       );
 

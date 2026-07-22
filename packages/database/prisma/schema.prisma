@@ -35,8 +35,9 @@ model Token {
   fundedBy                String?
   fundingAmount           String?
   fundingTimestamp        DateTime?
-  fundingSourceType       String   @default("Unknown")
+        fundingSourceType       String   @default("Unknown")
   timeToDeploymentMinutes Float?
+  signal              Signal?
 
   @@unique([chain, contractAddress])
   @@index([chain])
@@ -259,6 +260,33 @@ model FundingCluster {
   @@index([walletCount])
   @@index([deployments])
   @@map("funding_clusters")
+}
+
+model Signal {
+  id              String   @id @default(uuid())
+  tokenId         String   @unique
+  token           Token    @relation(fields: [tokenId], references: [id], onDelete: Cascade)
+  signal          String
+  rating          String
+  headline        String
+  summary         String
+  strengths       Json     @default("[]")
+  weaknesses      Json     @default("[]")
+  reasons         Json     @default("[]")
+  recommendation  String
+  opportunityScore Int     @default(0)
+  riskScore       Int      @default(0)
+  confidence      Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([signal])
+  @@index([rating])
+  @@index([confidence])
+  @@index([opportunityScore])
+  @@index([riskScore])
+  @@index([createdAt])
+  @@map("signals")
 }
 
 model SmartMoneyProfile {
