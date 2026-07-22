@@ -5,6 +5,7 @@ import {
   TrendRepository,
   SmartMoneyRepository,
   FundingRepository,
+  SignalRepository,
 } from '@token-intelligence-ai/database';
 import type { Logger } from '@token-intelligence-ai/shared';
 import type { ChainConfig } from '@token-intelligence-ai/blockchain';
@@ -17,6 +18,7 @@ import {
   calculateSmartMoneyScore,
   analyzeFunding,
   buildFundingGraph,
+  SignalEngine,
 } from '@token-intelligence-ai/analysis';
 
 import type { RpcClient, RpcTransaction } from './rpc.js';
@@ -36,6 +38,7 @@ export class BlockProcessor {
     private readonly trendRepo: TrendRepository,
     private readonly smartMoneyRepo: SmartMoneyRepository,
     private readonly fundingRepo: FundingRepository,
+    private readonly signalRepo: SignalRepository,
     private readonly log: Logger,
   ) {}
 
@@ -378,6 +381,23 @@ export class BlockProcessor {
         discoveredAt: blockTimestamp,
         isB20: b20Classification.isB20,
       });
+
+      await this.generateTokenSignal(token.id, deployer, {
+        chain: this.chain.name,
+        contractAddress,
+        name: result.metadata.name,
+        symbol: result.metadata.symbol,
+        riskScore: analysisResult.riskScore,
+        riskLevel: analysisResult.riskLevel,
+        metadataConfidence,
+        aiConfidence: Math.round(intelligence.confidence),
+        aiCategory: intelligence.category,
+        aiRecommendation: intelligence.recommendation,
+        isB20: b20Classification.isB20,
+        deployerReputation: repResult.score,
+        deployerGrade: repResult.grade,
+        blockTimestamp,
+      });
     } catch (error) {
       this.log.error('Analysis failed', {
         contractAddress,
@@ -692,6 +712,105 @@ export class BlockProcessor {
       }
     } catch (error) {
       this.log.error('Failed to recompute funding profile', { deployer, error: String(error) });
+    }
+  }
+
+  private async generateTokenSignal(
+    tokenId: string,
+    deployer: string,
+    ctx: {
+      chain: string;
+      contractAddress: string;
+      name: string;
+      symbol: string;
+      riskScore: number;
+      riskLevel: string;
+      metadataConfidence: number;
+      aiConfidence: number;
+      aiCategory: string;
+      aiRecommendation: string;
+      isB20: boolean;
+      deployerReputation: number;
+      deployerGrade: string;
+      blockTimestamp: Date;
+    },
+  ): Promise<void> {
+    try {
+      const [smartMoneyProfile, fundingProfile, walletProfile] = await Promise.all([
+        this.smartMoneyRepo.getProfile(deployer),
+        this.fundingRepo.getFundingProfile(deployer),
+        this.walletRepo.getWallet(deployer),
+      ]);
+
+      const clusterSize = fundingProfile?.fundedBy
+        ? (await this.fundingRepo.getWalletsByFunder(fundingProfile.fundedBy)).length
+        : null;
+
+      const smScore = smartMoneyProfile?.score ?? null;
+      const smGrade = smartMoneyProfile?.grade ?? null;
+
+      const engine = new SignalEngine();
+      const signalInput = {
+        tokenId,
+        contractAddress: ctx.contractAddress,
+        chain: ctx.chain,
+        name: ctx.name,
+        symbol: ctx.symbol,
+        deployer,
+        riskScore: ctx.riskScore,
+        riskLevel: ctx.riskLevel,
+        aiCategory: ctx.aiCategory,
+        aiConfidence: ctx.aiConfidence,
+        aiRecommendation: ctx.aiRecommendation,
+        metadataConfidence: ctx.metadataConfidence,
+        isB20: ctx.isB20,
+        deployerReputation: ctx.deployerReputation,
+        deployerGrade: ctx.deployerGrade,
+        discoveredAt: ctx.blockTimestamp,
+        smartMoneyScore: smScore,
+        smartMoneyGrade: smGrade,
+        fundingSourceType: fundingProfile?.fundingSourceType ?? 'Unknown',
+        fundingSourceLabel: fundingProfile?.fundingSourceLabel ?? 'Unknown',
+        fundingAmount: fundingProfile?.fundingAmount ?? null,
+        timeToDeploymentMinutes: fundingProfile?.timeToDeploymentMinutes ?? null,
+        fundedBy: fundingProfile?.fundedBy ?? null,
+        fundedByClusterSize: clusterSize,
+        walletTotalDeployments: walletProfile?.totalDeployments ?? 0,
+        walletSuccessfulTokens: walletProfile?.successfulTokens ?? 0,
+        walletHighRiskTokens: walletProfile?.highRiskTokens ?? 0,
+        walletAgeDays: walletProfile?.walletAgeDays ?? null,
+      };
+
+      const result = engine.generateTokenSignal(signalInput);
+
+      await this.signalRepo.upsertSignal(tokenId, {
+        tokenId,
+        signal: result.signal,
+        rating: result.rating,
+        headline: result.headline,
+        summary: result.summary,
+        strengths: result.strengths,
+        weaknesses: result.weaknesses,
+        reasons: result.reasons,
+        recommendation: result.recommendation,
+        opportunityScore: result.opportunityScore,
+        riskScore: result.riskScore,
+        confidence: result.confidence,
+      });
+
+      this.log.info('Signal generated', {
+        chain: ctx.chain,
+        contract: ctx.contractAddress,
+        signal: result.signal,
+        rating: result.rating,
+        confidence: result.confidence,
+      });
+    } catch (error) {
+      this.log.error('Failed to generate signal', {
+        chain: ctx.chain,
+        tokenId,
+        error: String(error),
+      });
     }
   }
 }

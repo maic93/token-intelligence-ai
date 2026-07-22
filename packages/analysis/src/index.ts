@@ -56,3 +56,5 @@ export type {
 } from './smart-money.js';
 export { analyzeFunding, parseFundingAmount, buildFundingGraph } from './funding-intelligence.js';
 export type { FundingAnalysisInput, FundingResult, RpcTraceCall } from './funding-intelligence.js';
+export { SignalEngine } from './signal-engine.js';
+export type { SignalType, OverallRating, SignalInput, SignalResult } from './signal-engine.js';

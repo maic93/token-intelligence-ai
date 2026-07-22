@@ -13,6 +13,7 @@ import {
   TrendingUp,
   Star,
   DollarSign,
+  Zap,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -30,6 +31,7 @@ const navItems = [
   { id: 'wallets', label: 'Wallet Intelligence', icon: Wallet },
   { id: 'deployers', label: 'Deployers', icon: Users },
   { id: 'analytics', label: 'Analytics', icon: BarChart3 },
+  { id: 'signals', label: 'Signals', icon: Zap },
   { id: 'funding', label: 'Funding', icon: DollarSign },
   { id: 'smartmoney', label: 'Smart Money', icon: Star },
   { id: 'trends', label: 'Trends', icon: TrendingUp },
