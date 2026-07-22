@@ -83,4 +83,113 @@ router.get('/smart-money', async (_req, res, next) => {
   }
 });
 
+router.get('/funding', async (_req, res, next) => {
+  try {
+    const [cexFunded, bridgeFunded, clusters, fastDeployment, largeFunding, reusedFunder] =
+      await Promise.all([
+        prisma.fundingProfile.findMany({
+          where: { fundingSourceType: 'exchange' },
+          orderBy: { fundingTimestamp: 'desc' },
+          take: 10,
+          select: {
+            wallet: true,
+            fundedBy: true,
+            fundingSourceType: true,
+            timeToDeploymentMinutes: true,
+          },
+        }),
+        prisma.fundingProfile.findMany({
+          where: { fundingSourceType: 'bridge' },
+          orderBy: { fundingTimestamp: 'desc' },
+          take: 10,
+          select: {
+            wallet: true,
+            fundedBy: true,
+            fundingSourceType: true,
+            timeToDeploymentMinutes: true,
+          },
+        }),
+        prisma.fundingCluster.findMany({
+          orderBy: { walletCount: 'desc' },
+          take: 10,
+          select: { id: true, funderWallet: true, walletCount: true, deployments: true },
+        }),
+        prisma.fundingProfile.findMany({
+          where: {
+            timeToDeploymentMinutes: { not: null, lte: 60 },
+            fundedBy: { not: null },
+          },
+          orderBy: { timeToDeploymentMinutes: 'asc' },
+          take: 10,
+          select: {
+            wallet: true,
+            fundedBy: true,
+            timeToDeploymentMinutes: true,
+            fundingSourceType: true,
+          },
+        }),
+        prisma.fundingProfile.findMany({
+          where: { fundedBy: { not: null } },
+          orderBy: { fundingAmount: 'desc' },
+          take: 10,
+          select: { wallet: true, fundedBy: true, fundingAmount: true, fundingSourceType: true },
+        }),
+        prisma.fundingProfile.groupBy({
+          by: ['fundedBy'],
+          _count: { wallet: true },
+          orderBy: { _count: { wallet: 'desc' } },
+          having: { wallet: { _count: { gte: 2 } } },
+          take: 10,
+        }),
+      ]);
+
+    const signals = [
+      ...cexFunded.map((w) => ({
+        wallet: w.wallet,
+        type: 'NEW_CEX_FUNDED',
+        fundedBy: w.fundedBy,
+        fundingSourceType: w.fundingSourceType,
+        timeToDeploymentMinutes: w.timeToDeploymentMinutes,
+      })),
+      ...bridgeFunded.map((w) => ({
+        wallet: w.wallet,
+        type: 'NEW_BRIDGE_FUNDED',
+        fundedBy: w.fundedBy,
+        fundingSourceType: w.fundingSourceType,
+        timeToDeploymentMinutes: w.timeToDeploymentMinutes,
+      })),
+      ...clusters.map((c) => ({
+        wallet: c.funderWallet,
+        type: 'NEW_CLUSTER',
+        clusterId: c.id,
+        walletCount: c.walletCount,
+        deployments: c.deployments,
+      })),
+      ...fastDeployment.map((w) => ({
+        wallet: w.wallet,
+        type: 'FAST_DEPLOYMENT',
+        fundedBy: w.fundedBy,
+        timeToDeploymentMinutes: w.timeToDeploymentMinutes,
+        fundingSourceType: w.fundingSourceType,
+      })),
+      ...largeFunding.map((w) => ({
+        wallet: w.wallet,
+        type: 'LARGE_FUNDING',
+        fundedBy: w.fundedBy,
+        fundingAmount: w.fundingAmount,
+        fundingSourceType: w.fundingSourceType,
+      })),
+      ...reusedFunder.map((w) => ({
+        funder: w.fundedBy,
+        type: 'REUSED_FUNDER',
+        walletCount: w._count.wallet,
+      })),
+    ];
+
+    res.json({ data: signals });
+  } catch (error) {
+    next(error);
+  }
+});
+
 export { router as signalsRouter };

@@ -27,6 +27,7 @@ import { intelligenceRouter } from './routes/intelligence.js';
 import { walletsRouter } from './routes/wallets.js';
 import { trendsRouter } from './routes/trends.js';
 import { smartMoneyRouter } from './routes/smart-money.js';
+import { fundingRouter } from './routes/funding.js';
 import { signalsRouter } from './routes/signals.js';
 import { errorHandler } from './middleware/error-handler.js';
 import { requestLogger } from './middleware/request-logger.js';
@@ -85,6 +86,7 @@ app.use('/api/intelligence', intelligenceRouter);
 app.use('/api/wallets', walletsRouter);
 app.use('/api/trends', trendsRouter);
 app.use('/api/smart-money', smartMoneyRouter);
+app.use('/api/funding', fundingRouter);
 app.use('/api/signals', signalsRouter);
 
 if (config.NODE_ENV === 'production') {

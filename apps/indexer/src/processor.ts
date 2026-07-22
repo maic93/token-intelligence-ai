@@ -4,6 +4,7 @@ import {
   WalletRepository,
   TrendRepository,
   SmartMoneyRepository,
+  FundingRepository,
 } from '@token-intelligence-ai/database';
 import type { Logger } from '@token-intelligence-ai/shared';
 import type { ChainConfig } from '@token-intelligence-ai/blockchain';
@@ -14,6 +15,8 @@ import {
   analyzeToken,
   analyzeWallet,
   calculateSmartMoneyScore,
+  analyzeFunding,
+  buildFundingGraph,
 } from '@token-intelligence-ai/analysis';
 
 import type { RpcClient, RpcTransaction } from './rpc.js';
@@ -32,6 +35,7 @@ export class BlockProcessor {
     private readonly walletRepo: WalletRepository,
     private readonly trendRepo: TrendRepository,
     private readonly smartMoneyRepo: SmartMoneyRepository,
+    private readonly fundingRepo: FundingRepository,
     private readonly log: Logger,
   ) {}
 
@@ -360,6 +364,8 @@ export class BlockProcessor {
 
       await this.recomputeSmartMoneyProfile(deployer);
 
+      await this.recomputeFundingProfile(deployer, blockNumber);
+
       await this.updateTrends({
         chain: this.chain.name,
         deployer,
@@ -623,6 +629,69 @@ export class BlockProcessor {
       });
     } catch (error) {
       this.log.error('Failed to recompute smart money profile', { deployer, error: String(error) });
+    }
+  }
+
+  private async recomputeFundingProfile(deployer: string, currentBlock: bigint): Promise<void> {
+    try {
+      const tokens = await this.tokenRepo.getTokensByDeployer(deployer);
+      if (tokens.length === 0) return;
+
+      const deployerBlockTimestamp = tokens[0].blockTimestamp;
+
+      const incomingTxs = await this.rpc.getInboundTransfers(deployer, 0n, currentBlock);
+      const fundingResult = analyzeFunding(
+        {
+          deployer,
+          deployerFirstSeen: deployerBlockTimestamp,
+          deployerTxHash: tokens[0].transactionHash,
+          deployerBlockNumber: currentBlock,
+          deployerBlockTimestamp,
+        },
+        incomingTxs,
+      );
+
+      const fromBlock = fundingResult.fundingBlock ? BigInt(fundingResult.fundingBlock) : null;
+      await this.fundingRepo.upsertFundingProfile(deployer, {
+        fundedBy: fundingResult.fundedBy,
+        fundingTxHash: fundingResult.fundingTxHash,
+        fundingBlock: fromBlock,
+        fundingTimestamp: fundingResult.fundingTimestamp,
+        fundingAmount: fundingResult.fundingAmount,
+        fundingCurrency: 'ETH',
+        timeToDeploymentMinutes: fundingResult.timeToDeploymentMinutes,
+        fundingSourceType: fundingResult.fundingSourceType,
+        clusterId: fundingResult.fundedBy ? `cluster:${fundingResult.fundedBy}` : null,
+        firstSeen: fundingResult.fundingTimestamp,
+      });
+
+      this.log.info('Funding profile updated', {
+        deployer,
+        source: fundingResult.fundingSourceType,
+        confidence: fundingResult.confidence,
+      });
+
+      if (fundingResult.fundedBy) {
+        const clusterProfiles = await this.fundingRepo.getWalletsByFunder(fundingResult.fundedBy);
+        const activeWallets = new Map<string, { wallet: string; fundedBy: string | null }>();
+        activeWallets.set(deployer, { wallet: deployer, fundedBy: fundingResult.fundedBy });
+        for (const p of clusterProfiles) {
+          activeWallets.set(p.wallet, { wallet: p.wallet, fundedBy: p.fundedBy });
+        }
+        const graph = buildFundingGraph(Array.from(activeWallets.values()));
+        await this.fundingRepo.upsertCluster(fundingResult.fundedBy, {
+          walletCount: graph.nodes.length,
+          deployments: graph.edges.length,
+          successfulTokens: 0,
+          highRiskTokens: 0,
+          chains: [this.chain.name],
+          totalFunding: fundingResult.fundingAmount ?? '0',
+          firstSeen: fundingResult.fundingTimestamp,
+          lastSeen: deployerBlockTimestamp,
+        });
+      }
+    } catch (error) {
+      this.log.error('Failed to recompute funding profile', { deployer, error: String(error) });
     }
   }
 }
