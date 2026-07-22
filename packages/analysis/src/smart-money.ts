@@ -42,7 +42,10 @@ export interface SmartMoneyResult {
   winRate: number;
 }
 
-export function calculateSmartMoneyScore(input: SmartMoneyInput): SmartMoneyResult {
+export function calculateSmartMoneyScore(
+  input: SmartMoneyInput,
+  graphClusterScore: number | null = null,
+): SmartMoneyResult {
   let score = 0;
   const reasons: string[] = [];
 
@@ -53,6 +56,19 @@ export function calculateSmartMoneyScore(input: SmartMoneyInput): SmartMoneyResu
   const negative = calculateNegativeSignals(input);
   score -= negative.score;
   reasons.push(...negative.reasons);
+
+  if (graphClusterScore !== null) {
+    if (graphClusterScore >= 70) {
+      score += 10;
+      reasons.push('strong wallet graph cluster');
+    } else if (graphClusterScore >= 40) {
+      score += 5;
+      reasons.push('moderate wallet graph cluster');
+    } else if (graphClusterScore >= 0) {
+      score -= 5;
+      reasons.push('weak wallet graph cluster signal');
+    }
+  }
 
   score = Math.max(0, Math.min(100, Math.round(score)));
 

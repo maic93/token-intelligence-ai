@@ -32,6 +32,12 @@ function makeInput(overrides: Partial<SignalInput> = {}): SignalInput {
     walletSuccessfulTokens: 4,
     walletHighRiskTokens: 0,
     walletAgeDays: 120,
+    graphClusterSize: null,
+    graphClusterScore: null,
+    graphRecursiveFundingDepth: null,
+    graphSharedDeployers: 0,
+    graphHasCircularFunding: false,
+    graphTeamWalletOverlap: 0,
     ...overrides,
   };
 }

@@ -12,7 +12,13 @@ export type SignalType =
   | 'PROMISING_AI'
   | 'PROMISING_B20'
   | 'PROMISING_DEFI'
-  | 'PROMISING_MEME';
+  | 'PROMISING_MEME'
+  | 'HIDDEN_CLUSTER'
+  | 'RECURSIVE_FUNDING'
+  | 'COMMON_DEPLOYER'
+  | 'COMMON_FUNDER'
+  | 'SUSPICIOUS_LOOP'
+  | 'SHARED_TEAM_WALLET';
 
 export type OverallRating =
   'STRONG_BUY' | 'BUY' | 'WATCH' | 'NEUTRAL' | 'CAUTION' | 'HIGH_RISK' | 'AVOID' | 'RUG_RISK';
@@ -46,6 +52,12 @@ export interface SignalInput {
   walletSuccessfulTokens: number;
   walletHighRiskTokens: number;
   walletAgeDays: number | null;
+  graphClusterSize: number | null;
+  graphClusterScore: number | null;
+  graphRecursiveFundingDepth: number | null;
+  graphSharedDeployers: number;
+  graphHasCircularFunding: boolean;
+  graphTeamWalletOverlap: number;
 }
 
 export interface SignalResult {
@@ -205,6 +217,13 @@ export class SignalEngine {
     if (input.walletAgeDays !== null && input.walletAgeDays > 90) score += 5;
     else if (input.walletAgeDays !== null && input.walletAgeDays > 30) score += 3;
 
+    if (input.graphClusterScore !== null && input.graphClusterScore >= 70) score += 12;
+    else if (input.graphClusterScore !== null && input.graphClusterScore >= 40) score += 6;
+
+    if (input.graphTeamWalletOverlap > 0) score += Math.min(input.graphTeamWalletOverlap * 5, 15);
+
+    if (input.graphSharedDeployers > 0) score += 3;
+
     score -= input.riskScore * 0.15;
 
     score = Math.max(0, Math.min(maxScore, Math.round(score)));
@@ -246,6 +265,16 @@ export class SignalEngine {
     else if (input.riskScore >= 60) score += 10;
     else if (input.riskScore >= 40) score += 5;
 
+    if (input.graphClusterSize !== null && input.graphClusterSize >= 5) score += 15;
+    else if (input.graphClusterSize !== null && input.graphClusterSize >= 3) score += 8;
+
+    if (input.graphRecursiveFundingDepth !== null && input.graphRecursiveFundingDepth >= 3)
+      score += 12;
+    else if (input.graphRecursiveFundingDepth !== null && input.graphRecursiveFundingDepth >= 2)
+      score += 6;
+
+    if (input.graphHasCircularFunding) score += 20;
+
     score = Math.max(0, Math.min(maxScore, Math.round(score)));
     return score;
   }
@@ -272,6 +301,10 @@ export class SignalEngine {
 
     if (input.deployerReputation >= 80) confidence += 10;
     else if (input.deployerReputation >= 60) confidence += 5;
+
+    if (input.graphClusterSize !== null && input.graphClusterSize >= 2) confidence += 5;
+    if (input.graphSharedDeployers > 0) confidence += 3;
+    if (input.graphHasCircularFunding) confidence -= 10;
 
     confidence = Math.max(0, Math.min(100, Math.round(confidence)));
     return confidence;
@@ -300,6 +333,13 @@ export class SignalEngine {
   private determineSignalType(rating: OverallRating, input: SignalInput): SignalType {
     if (rating === 'RUG_RISK') return 'RUG_WARNING';
     if (rating === 'AVOID' || rating === 'HIGH_RISK') return 'HIGH_RISK';
+
+    if (input.graphHasCircularFunding) return 'SUSPICIOUS_LOOP';
+    if (input.graphRecursiveFundingDepth !== null && input.graphRecursiveFundingDepth >= 3)
+      return 'RECURSIVE_FUNDING';
+    if (input.graphClusterSize !== null && input.graphClusterSize >= 5) return 'HIDDEN_CLUSTER';
+    if (input.graphSharedDeployers > 3) return 'SHARED_TEAM_WALLET';
+    if (input.graphTeamWalletOverlap > 0) return 'COMMON_DEPLOYER';
 
     if (input.smartMoneyScore !== null && input.smartMoneyScore >= 70) return 'SMART_MONEY';
     if (input.smartMoneyScore !== null && input.smartMoneyScore >= 50) return 'SAFE_DEPLOYER';
@@ -346,6 +386,13 @@ export class SignalEngine {
     if (input.aiCategory !== 'UNKNOWN') strengths.push(`Category: ${input.aiCategory}`);
     if (input.riskScore < 30) strengths.push(`Low Risk Score ${input.riskScore}`);
 
+    if (input.graphClusterScore !== null && input.graphClusterScore >= 70) {
+      strengths.push(`Strong wallet cluster (score: ${input.graphClusterScore})`);
+    }
+    if (input.graphTeamWalletOverlap > 0) {
+      strengths.push(`Shared team wallet overlap (${input.graphTeamWalletOverlap})`);
+    }
+
     return strengths;
   }
 
@@ -376,6 +423,19 @@ export class SignalEngine {
     if (input.deployerReputation <= 20) weaknesses.push('Very low deployer reputation');
     if (input.riskScore >= 70) weaknesses.push(`High risk score ${input.riskScore}`);
     if (input.deployerGrade === 'Dangerous') weaknesses.push('Dangerous deployer grade');
+
+    if (input.graphClusterSize !== null && input.graphClusterSize >= 5) {
+      weaknesses.push(`Part of a ${input.graphClusterSize}-wallet funding cluster`);
+    }
+    if (input.graphRecursiveFundingDepth !== null && input.graphRecursiveFundingDepth >= 2) {
+      weaknesses.push(`Recursive funding detected (depth: ${input.graphRecursiveFundingDepth})`);
+    }
+    if (input.graphHasCircularFunding) {
+      weaknesses.push('Circular funding loop detected — suspicious');
+    }
+    if (input.graphSharedDeployers > 3) {
+      weaknesses.push(`Shares ${input.graphSharedDeployers} deployers with other wallets`);
+    }
 
     return weaknesses;
   }

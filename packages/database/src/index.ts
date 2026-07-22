@@ -38,3 +38,12 @@ export type {
   SmartMoneyListResult,
   ListSmartMoneyOptions,
 } from './smart-money-repository.js';
+export { WalletGraphRepository } from './wallet-graph-repository.js';
+export type {
+  EdgeData,
+  ClusterData,
+  PathResult,
+  CreateEdgeInput,
+  WalletEdgeType,
+} from './wallet-graph-repository.js';
+export { WALLET_EDGE_TYPES } from './wallet-graph-repository.js';
